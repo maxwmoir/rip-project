@@ -1,1 +1,3 @@
 # COSC 365 RIP project
+
+AIS WILL RULE SOON
