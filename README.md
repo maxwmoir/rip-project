@@ -1,1 +1,1 @@
-# 364-rip
+# COSC 365 RIP project
