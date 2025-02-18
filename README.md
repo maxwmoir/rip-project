@@ -1,1 +1,3 @@
-# 364-rip
+# COSC 365 RIP project
+
+AIS WILL RULE SOON
