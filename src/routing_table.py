@@ -10,6 +10,7 @@ Authors:
 - Max Moir
 """
 
+import routing_entry
 
 """
 Class for storing all of the routing information for a router.
@@ -28,6 +29,6 @@ class RoutingTable():
 
     """
     def add_route(self, destination, next_hop, num_hops):
-        route = RoutingEntry(destination, next_hop, num_hops)
+        route = routing_entry.RoutingEntry(destination, next_hop, num_hops)
         self.routes.append(route)
         
