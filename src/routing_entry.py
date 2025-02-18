@@ -1,6 +1,6 @@
 """
 COSC364 - RIP Programming Assignment
-- routing_table.py
+- routing_entry.py
 
 Created: 
 - 18/02/25
@@ -10,16 +10,13 @@ Authors:
 - Max Moir
 """
 
-
 """
-Class for storing all of the routing information for a router.
+Class for storing information about a routing connection.
 """
-class RoutingTable(): 
-    def __init__(self):
-        self.routes = []
+class RoutingEntry(): 
 
     """
-    Add a new route to the routing table.
+    Initialise a new routing table entry.
 
     Args:
         destination (int): The port number of the destination router
@@ -27,7 +24,11 @@ class RoutingTable():
         num_hops (int): The cost to reach the next router
 
     """
-    def add_route(self, destination, next_hop, num_hops):
-        route = RoutingEntry(destination, next_hop, num_hops)
-        self.routes.append(route)
+    def __init__(self, destination, next_hop, num_hops):
+        self.destination = destination
+        self.next_hop = next_hop
+        self.num_hops = num_hops
+        # ...
+
+
         
