@@ -20,13 +20,17 @@ import calendar
 # Local Imports
 
 
-"""
-Helper method to check validity of the input port numbers.
-
-Args:
-    input_ports (list::int): The ports to check
-"""
 def verify_input_ports(input_ports):
+    """
+    Helper method to check validity of the input port numbers.
+
+    Args:
+        input_ports (list::int): The ports to check
+
+    Returns:
+        Boolean indicating success
+    """
+
     seen_ports = set()
 
     # Loop and "check off" seen ports whilst also verifying them
@@ -47,14 +51,19 @@ def verify_input_ports(input_ports):
     print("Input Ports are Valid!")
     return True
 
-"""
-Helper method to check validity of the output port numbers.
 
-Args:
-    input_ports (list::int): The input ports to check
-    output_ports (list::int): The output ports to check
-"""
 def verify_output_ports(input_ports, output_ports):
+    """
+    Helper method to check validity of the output port numbers.
+
+    Args:
+        input_ports (list::int): The input ports to check
+        output_ports (list::int): The output ports to check
+
+    Returns:
+        Boolean indicating success
+    """
+
     seen_ports = set()
 
     # Loop and "check off" seen ports whilst also verifying them
@@ -86,24 +95,34 @@ def verify_output_ports(input_ports, output_ports):
     return True
 
 
-"""
-Helper method to check validity of a given port number.
-
-Args:
-    port_number (int): The port to check
-"""
 def verify_port_number(port_number):
+    """
+    Helper method to check validity of a given port number.
+
+    Args:
+        port_number (int): The port to check
+
+    Returns:
+        Boolean indicating success
+    """
+
     return 1024 <= port_number <= 64000
 
-"""
-Class implementing the router daemon.
-"""
-class Daemon():
 
+class Daemon():
     """
-    Initialize the Daemon.
+    Class implementing the router daemon.
     """
+
     def __init__ (self, id, config):
+        """
+        Initialize the Daemon.
+
+        Args:
+            id (int): The identifier for this Daemon
+            config (str): The config file used to initialize the Daemon
+        """
+
         # Initialise variables
         self.id = id
         self.config = config
@@ -120,10 +139,11 @@ class Daemon():
         for sock in self.socks:
             print(sock)
 
-    """
-    Read the stored config file.
-    """
     def read_config(self):
+        """
+        Read the stored config file.
+        """
+
         try:
             f = open(self.config, "rb")
         except OSError:
@@ -166,10 +186,11 @@ class Daemon():
                 exit()
 
 
-    """
-    Bind the appropriate UDP sockets.
-    """
     def bind_sockets(self):
+        """
+        Bind the appropriate UDP sockets.
+        """
+
         for i in range(len(self.inputs)):
             print(f"Binding socket to port {self.inputs[i]}")
 
@@ -193,10 +214,12 @@ class Daemon():
                 print("ERROR: Socket binding failed")
                 exit()
 
-    """
-    Print information about the daemon to the console.
-    """
+
     def print_info(self):
+        """
+        Print information about the daemon to the console.
+        """
+        
         print("ID: ", self.id)
         print("conf: ", self.config)
         print("inputs: ", self.inputs)
