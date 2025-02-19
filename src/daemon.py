@@ -19,6 +19,82 @@ import calendar
 
 # Local Imports
 
+
+"""
+Helper method to check validity of the input port numbers.
+
+Args:
+    input_ports (list::int): The ports to check
+"""
+def verify_input_ports(input_ports):
+    seen_ports = set()
+
+    # Loop and "check off" seen ports whilst also verifying them
+    for port in input_ports:
+        valid = verify_port_number(port)
+
+        # Check if port is a duplicate
+        if port in seen_ports:
+            valid = False
+        else:
+            seen_ports.add(port)
+
+        # Something went wrong and these ports are invalid!
+        if not valid:
+            print("ERROR: 1 or more Input Ports are Invalid!")
+            return False
+        
+    print("Input Ports are Valid!")
+    return True
+
+"""
+Helper method to check validity of the output port numbers.
+
+Args:
+    input_ports (list::int): The input ports to check
+    output_ports (list::int): The output ports to check
+"""
+def verify_output_ports(input_ports, output_ports):
+    seen_ports = set()
+
+    # Loop and "check off" seen ports whilst also verifying them
+    for port_shell in output_ports:
+        port, metric, peer_id = port_shell
+
+        valid = verify_port_number(port)
+
+        # Check metric validity
+        if not 1 <= metric <= 15:
+            valid = False
+
+        # Check if port is a duplicate
+        if port in seen_ports:
+            valid = False
+        else:
+            seen_ports.add(port)
+
+        # Check if port is also an input
+        if port in input_ports:
+            valid = False
+
+        # Something went wrong and these ports are invalid!
+        if not valid:
+            print("ERROR: 1 or more Output Ports are Invalid!")
+            return False
+        
+    print("Output Ports are Valid!")
+    return True
+
+
+"""
+Helper method to check validity of a given port number.
+
+Args:
+    port_number (int): The port to check
+"""
+def verify_port_number(port_number):
+    return 1024 <= port_number <= 64000
+
 """
 Class implementing the router daemon.
 """
@@ -61,13 +137,19 @@ class Daemon():
                     match line[0]:
                         case b"router-id":
                             self.id = int(line[1])
+
                         case b"input-ports":
                             # Convert input ports
                             self.inputs = [int(l) for l in line[1:]]
+
+                            verify_input_ports(self.inputs)
+
                         case b"output-ports":
                             # Convert Port Number, Metric Value and Peer-Router ID into integers
                             port, metric, router_id = [[int(v) for v in l.decode().split("-")] for l in line[1:]]
                             self.outputs = [port, metric, router_id]
+
+                            verify_output_ports(self.inputs, self.outputs)
 
     """
     Bind the appropriate UDP sockets.
@@ -85,6 +167,7 @@ class Daemon():
                         sock.close()
                 print("ERROR: Socket creation failed")
                 exit()
+
             # Bind each socket
             try:
                 self.socks[i].bind(("localhost", self.inputs[i]))
