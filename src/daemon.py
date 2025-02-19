@@ -49,8 +49,8 @@ class Daemon():
     """
     def read_config(self):
         try:
-            f = open(self.config, 'rb')
-        except OSERROR:
+            f = open(self.config, "rb")
+        except OSError:
             print ("Could not read file")
             sys.exit()
         with f:
@@ -59,12 +59,15 @@ class Daemon():
             for line in [l.split() for l in lines]:
                 if (len(line)):
                     match line[0]:
-                        case b'router-id':
+                        case b"router-id":
                             self.id = int(line[1])
-                        case b'input-ports':
+                        case b"input-ports":
+                            # Convert input ports
                             self.inputs = [int(l) for l in line[1:]]
-                        case b'output-ports':
-                            self.outputs = [int(l) for l in line[1:]]
+                        case b"output-ports":
+                            # Convert Port Number, Metric Value and Peer-Router ID into integers
+                            port, metric, router_id = [[int(v) for v in l.decode().split("-")] for l in line[1:]]
+                            self.outputs = [port, metric, router_id]
 
     """
     Bind the appropriate UDP sockets.
@@ -102,7 +105,7 @@ class Daemon():
         print("outputs: ", self.outputs)
 
 # Run the program
-if __name__ == '__main__':
+if __name__ == "__main__":
     id = sys.argv[1]
     config = sys.argv[2]
     daemon = Daemon(id, config)
