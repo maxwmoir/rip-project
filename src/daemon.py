@@ -18,7 +18,8 @@ import datetime
 import calendar
 
 # Local Imports
-
+import packet
+from packet import RIPPacket, RIPEntry
 
 def verify_input_ports(input_ports):
     """
@@ -219,7 +220,7 @@ class Daemon():
         """
         Print information about the daemon to the console.
         """
-        
+
         print("ID: ", self.id)
         print("conf: ", self.config)
         print("inputs: ", self.inputs)
@@ -230,3 +231,18 @@ if __name__ == "__main__":
     id = sys.argv[1]
     config = sys.argv[2]
     daemon = Daemon(id, config)
+
+    ents = [
+        RIPEntry(2, 3),
+        RIPEntry(3, 6),
+        RIPEntry(5, 5),
+        RIPEntry(1, 2),
+    ]
+
+    a_packet = RIPPacket(packet.COMMAND_RESPONSE, 2, ents)
+    
+    encoded_packet = packet.encode_packet(a_packet)
+    decoded_packet = packet.decode_packet(encoded_packet)
+
+    print(a_packet)
+    print(decoded_packet)

@@ -13,16 +13,15 @@ Authors:
 import struct
 import socket
 
+COMMAND_REQUEST = 1
+COMMAND_RESPONSE = 2
+VERSION = 2
+AFI = 2 # Address Family Identifier
 
 class RIPPacket():
     """
     Class for storing data to be sent / received by the router.
     """
-    
-    COMMAND_REQUEST = 1
-    COMMAND_RESPONSE = 2
-    VERSION = 2
-    AFI = 2 # Address Family Identifier
 
     def __init__(self, command, from_router_id, entries=[]):
         """
@@ -35,7 +34,7 @@ class RIPPacket():
         """
 
         self.command = command
-        self.version = self.VERSION
+        self.version = VERSION
         self.from_router_id = from_router_id
         self.entries = entries
 
@@ -52,7 +51,10 @@ class RIPPacket():
 
         self.entries.append(RIPEntry(afi, to_router_id, metric))
 
-    def encode_packet(self):
+    def __str__(self):
+        return f"Packet-Object: Command Type: {self.command}, Version: {self.version}, From-ID: {self.from_router_id}, Entries: [{''.join([f"[To-ID: {l.to_router_id}, Metric: {l.metric}, AFI: {l.afi}], " for l in self.entries])}]"
+
+def encode_packet(input_packet):
         """
         Construct an encoded packet represented by a byte-array.
 
@@ -62,19 +64,19 @@ class RIPPacket():
 
         header_size = 4
         payload_size = 20
-        packet_size = header_size + payload_size * len(self.entries)
+        packet_size = header_size + payload_size * len(input_packet.entries)
         packet = bytearray(packet_size)
 
         # Form Header
-        packet[0] = self.command
-        packet[1] = self.version
-        packet[2] = (self.from_router_id >> 8) & 0xFF # shift right >> 8 and bitmask the initial byte (which is now the original leftmost byte)
-        packet[3] = (self.from_router_id >> 0) & 0xFF # bitmask the initial byte as we have already collected the 2nd byte.
+        packet[0] = input_packet.command
+        packet[1] = input_packet.version
+        packet[2] = (input_packet.from_router_id >> 8) & 0xFF # shift right >> 8 and bitmask the initial byte (which is now the original leftmost byte)
+        packet[3] = (input_packet.from_router_id >> 0) & 0xFF # bitmask the initial byte as we have already collected the 2nd byte.
         
         # Store encoded entries
-        for i in range(len(entries), 1):
+        for i in range(len(input_packet.entries)):
             offset = payload_size * i
-            entry = entries[i]
+            entry = input_packet.entries[i]
 
             packet[header_size + offset + 0]    = (entry.afi >> 8) & 0xFF # shift right >> 8 and bitmask the initial byte (which is now the original leftmost byte)
             packet[header_size + offset + 1]    = (entry.afi >> 0) & 0xFF # bitmask the initial byte as we have already collected the 2nd byte.
@@ -93,8 +95,38 @@ class RIPPacket():
         return packet
 
 
-    def decode_packet(self):
-        pass
+def decode_packet(encoded_packet):
+    """
+    Decode a packet.
+
+    Returns:
+        Encoded packet
+    """
+
+    header_size = 4
+    payload_size = 20
+
+    entries = []
+    for i in range(header_size, len(encoded_packet), payload_size):
+        afi = encoded_packet[i] << 8 | encoded_packet[i + 1]
+        # must-be-zero segment
+        to_router_id = encoded_packet[i + 4] << 24 | encoded_packet[i + 5] << 16 | encoded_packet[i + 6] << 8 | encoded_packet[i + 7]
+
+        # must-be-zero segment
+        metric = encoded_packet[i + 16] << 24 | encoded_packet[i + 17] << 16 | encoded_packet[i + 18] << 8 | encoded_packet[i + 19]
+
+        entry = RIPEntry(to_router_id, metric, afi)
+        entries.append(entry)
+
+    # Form Header
+    command = encoded_packet[0]
+    version = encoded_packet[1]
+    from_router_id = encoded_packet[2] << 8 | encoded_packet[3]
+
+    packet = RIPPacket(command, from_router_id, entries)
+    
+    # Return usable Packet
+    return packet
 
 
 class RIPEntry():
@@ -102,8 +134,7 @@ class RIPEntry():
     Class for storing a single entry to be delivered in a packet.
     """
 
-
-    def __init__(self, to_router_id, metric, afi):
+    def __init__(self, to_router_id, metric, afi=AFI):
         """
         Initialise the RIP entry object.
 
