@@ -128,19 +128,27 @@ class Daemon():
             f = open(self.config, "rb")
         except OSError:
             print ("Could not read file")
-            sys.exit()
+            exit()
+        
+        # Read File
         with f:
             lines = f.readlines()
+
+            contains_router_id = False
+            contains_input_ports = False
+            contains_output_ports = False
 
             for line in [l.split() for l in lines]:
                 if (len(line)):
                     match line[0]:
                         case b"router-id":
                             self.id = int(line[1])
+                            contains_router_id = True
 
                         case b"input-ports":
                             # Convert input ports
                             self.inputs = [int(l) for l in line[1:]]
+                            contains_input_ports = True
 
                             verify_input_ports(self.inputs)
 
@@ -148,8 +156,15 @@ class Daemon():
                             # Convert Port Number, Metric Value and Peer-Router ID into integers
                             port, metric, router_id = [[int(v) for v in l.decode().split("-")] for l in line[1:]]
                             self.outputs = [port, metric, router_id]
+                            contains_output_ports = True
 
                             verify_output_ports(self.inputs, self.outputs)
+            
+            # Ensure all config parameters exist in the config file
+            if not (contains_router_id and contains_input_ports and contains_output_ports):
+                print("ERROR: Config File is missing Parameters!")
+                exit()
+
 
     """
     Bind the appropriate UDP sockets.
