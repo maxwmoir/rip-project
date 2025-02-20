@@ -10,7 +10,7 @@ Authors:
 - Max Moir
 """
 
-class RoutingEntry(): 
+class RoutingEntry():
     """
     Class for storing information about a routing connection.
     """
@@ -24,11 +24,8 @@ class RoutingEntry():
             next_hop (int): The port number of the next router in-sequence
             num_hops (int): The cost to reach the next router
         """
-        
+
         self.destination = destination
         self.next_hop = next_hop
         self.num_hops = num_hops
         # ...
-
-
-        
