@@ -132,9 +132,9 @@ class Daemon():
         self.socks = []
 
         # Call methods
-        self.read_config()
-        self.print_info()
-        self.bind_sockets()
+        # self.read_config()
+        # self.print_info()
+        # self.bind_sockets()
 
         # ::DEBUG:: Print socket configuration
         for sock in self.socks:
