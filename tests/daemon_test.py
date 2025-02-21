@@ -3,7 +3,9 @@ from src.daemon import Daemon
 
 def test_square():
 
-    id = "2"
-    config = "./test"
+    id = "id1"
+    config = './tests/cfgs/cfg1.txt'
     daemon = Daemon(id, config)
-    assert daemon.id == "2" 
+    daemon.print_info()
+    assert daemon.id == 1 
+    assert len(daemon.socks) == 3

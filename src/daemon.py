@@ -132,9 +132,9 @@ class Daemon():
         self.socks = []
 
         # Call methods
-        # self.read_config()
-        # self.print_info()
-        # self.bind_sockets()
+        self.read_config()
+        self.print_info()
+        self.bind_sockets()
 
         # ::DEBUG:: Print socket configuration
         for sock in self.socks:
@@ -144,6 +144,9 @@ class Daemon():
         """
         Read the stored config file.
         """
+
+        import os
+        print(os.getcwd())
 
         try:
             f = open(self.config, "rb")
