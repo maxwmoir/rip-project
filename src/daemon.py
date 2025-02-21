@@ -48,7 +48,7 @@ def verify_input_ports(input_ports):
         if not valid:
             print("ERROR: 1 or more Input Ports are Invalid!")
             return False
-        
+
     print("Input Ports are Valid!")
     return True
 
@@ -91,7 +91,7 @@ def verify_output_ports(input_ports, output_ports):
         if not valid:
             print("ERROR: 1 or more Output Ports are Invalid!")
             return False
-        
+
     print("Output Ports are Valid!")
     return True
 
@@ -183,7 +183,7 @@ class Daemon():
                             contains_output_ports = True
 
                             verify_output_ports(self.inputs, self.outputs)
-            
+
             # Ensure all config parameters exist in the config file
             if not (contains_router_id and contains_input_ports and contains_output_ports):
                 print("ERROR: Config File is missing Parameters!")
@@ -195,8 +195,8 @@ class Daemon():
         Bind the appropriate UDP sockets.
         """
 
-        for i in range(len(self.inputs)):
-            print(f"Binding socket to port {self.inputs[i]}")
+        for _, port in enumerate(self.inputs):
+            print(f"Binding socket to port {port}")
 
             # Create each socket
             try:
@@ -210,7 +210,7 @@ class Daemon():
 
             # Bind each socket
             try:
-                self.socks[i].bind(("localhost", self.inputs[i]))
+                port.bind(("localhost", port))
             except:
                 for sock in self.socks:
                     if sock != None:
@@ -218,6 +218,8 @@ class Daemon():
                 print("ERROR: Socket binding failed")
                 exit()
 
+    def __str__(self):
+        return f"ID: {self.id}"
 
     def print_info(self):
         """
@@ -231,7 +233,7 @@ class Daemon():
 
 # Run the program
 if __name__ == "__main__":
-    id = sys.argv[1]
+    packet_id = sys.argv[1]
     config = sys.argv[2]
     daemon = Daemon(id, config)
 
@@ -243,7 +245,7 @@ if __name__ == "__main__":
     ]
 
     a_packet = RIPPacket(packet.COMMAND_RESPONSE, 2, ents)
-    
+
     encoded_packet = packet.encode_packet(a_packet)
     decoded_packet = packet.decode_packet(encoded_packet)
 
