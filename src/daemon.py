@@ -145,9 +145,6 @@ class Daemon():
         Read the stored config file.
         """
 
-        import os
-        print(os.getcwd())
-
         try:
             f = open(self.config, "rb")
         except OSError:
@@ -195,27 +192,29 @@ class Daemon():
         Bind the appropriate UDP sockets.
         """
 
-        for _, port in enumerate(self.inputs):
+        for i, port in enumerate(self.inputs):
             print(f"Binding socket to port {port}")
 
             # Create each socket
             try:
                 self.socks.append(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
-            except:
+            except Exception as e:
                 for sock in self.socks:
-                    if sock != None:
+                    if sock is not None:
                         sock.close()
                 print("ERROR: Socket creation failed")
+                print(e)
                 exit()
 
             # Bind each socket
             try:
-                port.bind(("localhost", port))
-            except:
+                self.socks[i].bind(("localhost", port))
+            except Exception as e:
                 for sock in self.socks:
-                    if sock != None:
+                    if sock is not None:
                         sock.close()
                 print("ERROR: Socket binding failed")
+                print(e)
                 exit()
 
     def __str__(self):
