@@ -62,8 +62,8 @@ def test_connection():
 
     encoded_packet = packet.encode_packet(a_packet)
 
-    t1 = threading.Thread(target=d1.rcv_loop)
-    t2 = threading.Thread(target=d2.send_message, args=(encoded_packet,))
+    t1 = threading.Thread(target=d1.main_loop)
+    t2 = threading.Thread(target=d2.send_packet, args=(encoded_packet,))
 
     # decoded_packet = packet.decode_packet(encoded_packet)
     t1.start()

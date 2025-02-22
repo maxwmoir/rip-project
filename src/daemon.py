@@ -128,6 +128,7 @@ class Daemon():
         self.inputs = []
         self.outputs = []
         self.socks = []
+        self.state = "start"
 
         # Call methods
         self.read_config()
@@ -215,7 +216,13 @@ class Daemon():
                 print(e)
                 exit()
 
-    def rcv_loop(self):
+    def handle_packet(self, packet):
+        """
+        Handle Recieved packet
+        """
+        pass
+
+    def main_loop(self):
         """
         Receive message
         """
@@ -234,7 +241,7 @@ class Daemon():
                             print(e)
                             sys.exit()
 
-    def send_message(self, packet):
+    def send_packet(self, packet):
         """
         Send message to output port
         """
@@ -246,8 +253,9 @@ class Daemon():
 
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            except:
+            except Exception as e:
                 print("ERROR: Socket creation failed")
+                print(e)
                 exit()
 
             sock.settimeout(1.0)
@@ -260,9 +268,6 @@ class Daemon():
                 print("ERROR: Sending failed")
                 print(e)
                 exit()
-
-
-
 
         except Exception as error:
             print(f"ERROR: {error}")
