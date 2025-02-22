@@ -13,6 +13,7 @@ Authors:
 # Package Imports
 import socket
 import sys
+import select
 
 # Local Imports
 import packet
@@ -190,7 +191,7 @@ class Daemon():
         """
 
         for i, port in enumerate(self.inputs):
-            print(f"Binding socket to port {port}")
+            # print(f"Binding socket to port {port}")
 
             # Create each socket
             try:
@@ -213,6 +214,64 @@ class Daemon():
                 print("ERROR: Socket binding failed")
                 print(e)
                 exit()
+
+    def rcv_loop(self):
+        """
+        Receive message
+        """
+        while True:
+            print("Waiting for requests...")
+            read_sockets, write_sockets, error_sockets = select.select(self.socks, [], [])
+            for sock in read_sockets:
+                if sock in self.socks:
+                        try:
+                            message, address = sock.recvfrom(1024)
+                            cursender = ((address, self.socks.index(sock)))
+                            print(cursender)
+                            print(packet.decode_packet(message))
+                            sys.exit()
+                        except Exception as e:
+                            print(e)
+                            sys.exit()
+
+    def send_message(self, packet):
+        """
+        Send message to output port
+        """
+        sock = None
+        try:
+            address = 'localhost'
+            port = self.outputs[0][0]
+            print(address, port)
+
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            except:
+                print("ERROR: Socket creation failed")
+                exit()
+
+            sock.settimeout(1.0)
+            message = packet 
+
+            address = (address, port)
+            try:
+                sock.sendto(message, address)
+            except Exception as e:
+                print("ERROR: Sending failed")
+                print(e)
+                exit()
+
+
+
+
+        except Exception as error:
+            print(f"ERROR: {error}")
+
+        finally:
+            if sock is not None:
+                sock.close()
+
+
 
     def __str__(self):
         return f"ID: {self.id}"

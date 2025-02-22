@@ -1,0 +1,6 @@
+router-id 1
+input-ports 6201 7345
+output-ports 6110-1-1 4213-1-1 2143-1-1
+
+
+
