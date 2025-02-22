@@ -55,6 +55,7 @@ class RIPPacket():
         entries = f"{''.join([f"[To-ID: {l.to_router_id}, Metric: {l.metric}, AFI: {l.afi}], " for l in self.entries])}"
         return f"Packet-Object: Command Type: {self.command}, Version: {self.version}, From-ID: {self.from_router_id}, Entries: [{entries}]"
 
+
 def encode_packet(input_packet):
     """
     Construct an encoded packet represented by a byte-array.

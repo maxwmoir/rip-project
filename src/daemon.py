@@ -230,6 +230,7 @@ class Daemon():
         print("inputs: ", self.inputs)
         print("outputs: ", self.outputs)
 
+
 # Run the program
 if __name__ == "__main__":
     packet_id = sys.argv[1]
