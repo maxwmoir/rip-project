@@ -24,7 +24,7 @@ def fixture_cfg1_daemon():
     Create daemon from config cfg1
     
     '''
-    return Daemon('id', './tests/cfgs/cfg1.txt')
+    return Daemon('./tests/cfgs/cfg1.txt')
 
 def test_creation(daemon):
     ''' 
@@ -42,8 +42,8 @@ def test_connection():
     Test Connection
     '''
 
-    d1 = Daemon('id', './tests/cfgs/cfg2.txt')
-    d2 = Daemon('id', './tests/cfgs/cfg3.txt')
+    d1 = Daemon('./tests/cfgs/cfg2.txt')
+    d2 = Daemon('./tests/cfgs/cfg3.txt')
 
     assert 6110 in d1.inputs
     assert [6110, 1, 1] in d2.outputs

@@ -113,7 +113,7 @@ class Daemon():
     Class implementing the router daemon.
     """
 
-    def __init__ (self, id, config):
+    def __init__ (self, config):
         """
         Initialize the Daemon.
 
@@ -123,7 +123,7 @@ class Daemon():
         """
 
         # Initialise variables
-        self.id = id
+        self.id = None
         self.config = config
         self.inputs = []
         self.outputs = []
@@ -289,9 +289,8 @@ class Daemon():
 
 # Run the program
 if __name__ == "__main__":
-    packet_id = sys.argv[1]
-    config = sys.argv[2]
-    daemon = Daemon(id, config)
+    config_name = sys.argv[1]
+    daemon = Daemon(config_name)
 
     ents = [
         RIPEntry(2, 3),
