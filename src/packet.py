@@ -10,9 +10,6 @@ Authors:
 - Max Moir
 """
 
-import struct
-import socket
-
 COMMAND_REQUEST = 1
 COMMAND_RESPONSE = 2
 VERSION = 2
@@ -23,7 +20,7 @@ class RIPPacket():
     Class for storing data to be sent / received by the router.
     """
 
-    def __init__(self, command, from_router_id, entries=[]):
+    def __init__(self, command, from_router_id, entries=None):
         """
         Initialise the RIP packet object.
 
@@ -36,7 +33,7 @@ class RIPPacket():
         self.command = command
         self.version = VERSION
         self.from_router_id = from_router_id
-        self.entries = entries
+        self.entries = entries if entries else []
 
 
     def add_entry(self, to_router_id, metric, afi=AFI):
@@ -49,50 +46,51 @@ class RIPPacket():
             afi (int): The Address Family Identifier of the entry
         """
 
-        self.entries.append(RIPEntry(afi, to_router_id, metric))
+        self.entries.append(RIPEntry(to_router_id, metric, afi))
 
     def __str__(self):
-        return f"Packet-Object: Command Type: {self.command}, Version: {self.version}, From-ID: {self.from_router_id}, Entries: [{''.join([f"[To-ID: {l.to_router_id}, Metric: {l.metric}, AFI: {l.afi}], " for l in self.entries])}]"
+        entries = f"{''.join([f"[To-ID: {l.to_router_id}, Metric: {l.metric}, AFI: {l.afi}], " for l in self.entries])}"
+        return f"Packet-Object: Command Type: {self.command}, Version: {self.version}, From-ID: {self.from_router_id}, Entries: [{entries}]"
+
 
 def encode_packet(input_packet):
-        """
-        Construct an encoded packet represented by a byte-array.
+    """
+    Construct an encoded packet represented by a byte-array.
 
-        Returns:
-            Encoded packet
-        """
+    Returns:
+        Encoded packet
+    """
 
-        header_size = 4
-        payload_size = 20
-        packet_size = header_size + payload_size * len(input_packet.entries)
-        packet = bytearray(packet_size)
+    header_size = 4
+    payload_size = 20
+    packet_size = header_size + payload_size * len(input_packet.entries)
+    packet = bytearray(packet_size)
 
-        # Form Header
-        packet[0] = input_packet.command
-        packet[1] = input_packet.version
-        packet[2] = (input_packet.from_router_id >> 8) & 0xFF # shift right >> 8 and bitmask the initial byte (which is now the original leftmost byte)
-        packet[3] = (input_packet.from_router_id >> 0) & 0xFF # bitmask the initial byte as we have already collected the 2nd byte.
-        
-        # Store encoded entries
-        for i in range(len(input_packet.entries)):
-            offset = payload_size * i
-            entry = input_packet.entries[i]
+    # Form Header
+    packet[0] = input_packet.command
+    packet[1] = input_packet.version
+    packet[2] = (input_packet.from_router_id >> 8) & 0xFF 
+    packet[3] = (input_packet.from_router_id >> 0) & 0xFF
 
-            packet[header_size + offset + 0]    = (entry.afi >> 8) & 0xFF # shift right >> 8 and bitmask the initial byte (which is now the original leftmost byte)
-            packet[header_size + offset + 1]    = (entry.afi >> 0) & 0xFF # bitmask the initial byte as we have already collected the 2nd byte.
-            # must-be-zero segment
-            packet[header_size + offset + 4]    = (entry.to_router_id >> 24) & 0xFF # To-Router ID
-            packet[header_size + offset + 5]    = (entry.to_router_id >> 16) & 0xFF # To-Router ID
-            packet[header_size + offset + 6]    = (entry.to_router_id >> 8) & 0xFF # To-Router ID
-            packet[header_size + offset + 7]    = (entry.to_router_id >> 0) & 0xFF # To-Router ID
-            # must-be-zero segment
-            packet[header_size + offset + 16]    = (entry.metric >> 24) & 0xFF # Metric
-            packet[header_size + offset + 17]    = (entry.metric >> 16) & 0xFF # Metric
-            packet[header_size + offset + 18]    = (entry.metric >> 8) & 0xFF # Metric
-            packet[header_size + offset + 19]    = (entry.metric >> 0) & 0xFF # Metric
-        
-        # Return usable Packet
-        return packet
+    # Store encoded entries
+    for i, entry in enumerate(input_packet.entries):
+        offset = payload_size * i
+
+        packet[header_size + offset + 0]    = (entry.afi >> 8) & 0xFF
+        packet[header_size + offset + 1]    = (entry.afi >> 0) & 0xFF
+        # must-be-zero segment
+        packet[header_size + offset + 4]    = (entry.to_router_id >> 24) & 0xFF # To-Router ID
+        packet[header_size + offset + 5]    = (entry.to_router_id >> 16) & 0xFF # To-Router ID
+        packet[header_size + offset + 6]    = (entry.to_router_id >> 8) & 0xFF # To-Router ID
+        packet[header_size + offset + 7]    = (entry.to_router_id >> 0) & 0xFF # To-Router ID
+        # must-be-zero segment
+        packet[header_size + offset + 16]    = (entry.metric >> 24) & 0xFF # Metric
+        packet[header_size + offset + 17]    = (entry.metric >> 16) & 0xFF # Metric
+        packet[header_size + offset + 18]    = (entry.metric >> 8) & 0xFF # Metric
+        packet[header_size + offset + 19]    = (entry.metric >> 0) & 0xFF # Metric
+
+    # Return usable Packet
+    return packet
 
 
 def decode_packet(encoded_packet):
@@ -120,11 +118,11 @@ def decode_packet(encoded_packet):
 
     # Form Header
     command = encoded_packet[0]
-    version = encoded_packet[1]
+    # version = encoded_packet[1]
     from_router_id = encoded_packet[2] << 8 | encoded_packet[3]
 
     packet = RIPPacket(command, from_router_id, entries)
-    
+
     # Return usable Packet
     return packet
 

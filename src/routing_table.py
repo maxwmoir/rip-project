@@ -12,7 +12,7 @@ Authors:
 
 import routing_entry
 
-class RoutingTable(): 
+class RoutingTable():
     """
     Class for storing all of the routing information for a router.
     """
@@ -21,7 +21,7 @@ class RoutingTable():
         """
         Initialize the Routing Table
         """
-        
+
         self.routes = []
 
 
@@ -38,4 +38,3 @@ class RoutingTable():
 
         route = routing_entry.RoutingEntry(destination, next_hop, num_hops)
         self.routes.append(route)
-        
