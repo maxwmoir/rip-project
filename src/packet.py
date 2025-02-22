@@ -10,9 +10,6 @@ Authors:
 - Max Moir
 """
 
-import struct
-import socket
-
 COMMAND_REQUEST = 1
 COMMAND_RESPONSE = 2
 VERSION = 2
@@ -23,7 +20,7 @@ class RIPPacket():
     Class for storing data to be sent / received by the router.
     """
 
-    def __init__(self, command, from_router_id, entries=[]):
+    def __init__(self, command, from_router_id, entries=None):
         """
         Initialise the RIP packet object.
 
@@ -36,7 +33,7 @@ class RIPPacket():
         self.command = command
         self.version = VERSION
         self.from_router_id = from_router_id
-        self.entries = entries
+        self.entries = entries if entries else []
 
 
     def add_entry(self, to_router_id, metric, afi=AFI):
@@ -72,15 +69,15 @@ def encode_packet(input_packet):
     # Form Header
     packet[0] = input_packet.command
     packet[1] = input_packet.version
-    packet[2] = (input_packet.from_router_id >> 8) & 0xFF # shift right >> 8 and bitmask the initial byte (which is now the original leftmost byte)
-    packet[3] = (input_packet.from_router_id >> 0) & 0xFF # bitmask the initial byte as we have already collected the 2nd byte.
+    packet[2] = (input_packet.from_router_id >> 8) & 0xFF 
+    packet[3] = (input_packet.from_router_id >> 0) & 0xFF
 
     # Store encoded entries
     for i, entry in enumerate(input_packet.entries):
         offset = payload_size * i
 
-        packet[header_size + offset + 0]    = (entry.afi >> 8) & 0xFF # shift right >> 8 and bitmask the initial byte (which is now the original leftmost byte)
-        packet[header_size + offset + 1]    = (entry.afi >> 0) & 0xFF # bitmask the initial byte as we have already collected the 2nd byte.
+        packet[header_size + offset + 0]    = (entry.afi >> 8) & 0xFF
+        packet[header_size + offset + 1]    = (entry.afi >> 0) & 0xFF
         # must-be-zero segment
         packet[header_size + offset + 4]    = (entry.to_router_id >> 24) & 0xFF # To-Router ID
         packet[header_size + offset + 5]    = (entry.to_router_id >> 16) & 0xFF # To-Router ID
@@ -121,7 +118,7 @@ def decode_packet(encoded_packet):
 
     # Form Header
     command = encoded_packet[0]
-    version = encoded_packet[1]
+    # version = encoded_packet[1]
     from_router_id = encoded_packet[2] << 8 | encoded_packet[3]
 
     packet = RIPPacket(command, from_router_id, entries)

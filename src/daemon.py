@@ -13,9 +13,6 @@ Authors:
 # Package Imports
 import socket
 import sys
-import select
-import datetime
-import calendar
 
 # Local Imports
 import packet
