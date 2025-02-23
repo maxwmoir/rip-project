@@ -14,10 +14,12 @@ Authors:
 import socket
 import sys
 import select
+import time
 
 # Local Imports
 import packet
 from packet import RIPPacket, RIPEntry
+from routing_table import RoutingTable
 
 def verify_input_ports(input_ports):
     """
@@ -47,7 +49,7 @@ def verify_input_ports(input_ports):
             print("ERROR: 1 or more Input Ports are Invalid!")
             return False
 
-    print("Input Ports are Valid!")
+    # print("Input Ports are Valid!")
     return True
 
 
@@ -90,7 +92,7 @@ def verify_output_ports(input_ports, output_ports):
             print("ERROR: 1 or more Output Ports are Invalid!")
             return False
 
-    print("Output Ports are Valid!")
+    # print("Output Ports are Valid!")
     return True
 
 
@@ -129,15 +131,22 @@ class Daemon():
         self.outputs = []
         self.socks = []
         self.state = "start"
+        self.table = RoutingTable()
+        self.history = [] # For testing
+
+        # Initialise timers
+        self.update_timer = time.time()
+        self.invalid_timer = None
+        self.holddown_timer = None
+        self.flush_timer = None
 
         # Call methods
         self.read_config()
-        self.print_info()
         self.bind_sockets()
 
         # ::DEBUG:: Print socket configuration
-        for sock in self.socks:
-            print(sock)
+        # for sock in self.socks:
+            # print(sock)
 
     def read_config(self):
         """
@@ -216,11 +225,23 @@ class Daemon():
                 print(e)
                 exit()
 
-    def handle_packet(self, packet):
+
+    def receive_packet(self):
         """
-        Handle Recieved packet
+        Receive packet from another server
         """
-        pass
+        read_sockets, _, _ = select.select(self.socks, [], [])
+        for sock in read_sockets:
+            if sock in self.socks:
+                try:
+                    message, address = sock.recvfrom(1024)
+                    cursender = ((address, self.socks.index(sock)))
+                    return packet.decode_packet(message)
+                except Exception as e:
+                    print(e)
+                    return None
+        return None
+
 
     def main_loop(self):
         """
@@ -228,18 +249,13 @@ class Daemon():
         """
         while True:
             print("Waiting for requests...")
-            read_sockets, write_sockets, error_sockets = select.select(self.socks, [], [])
-            for sock in read_sockets:
-                if sock in self.socks:
-                        try:
-                            message, address = sock.recvfrom(1024)
-                            cursender = ((address, self.socks.index(sock)))
-                            print(cursender)
-                            print(packet.decode_packet(message))
-                            sys.exit()
-                        except Exception as e:
-                            print(e)
-                            sys.exit()
+            print(self.update_timer)
+
+            packet = self.receive_packet()
+
+            if packet.command == 3:
+                print(packet)
+                sys.exit()
 
     def send_packet(self, packet):
         """
@@ -249,7 +265,6 @@ class Daemon():
         try:
             address = 'localhost'
             port = self.outputs[0][0]
-            print(address, port)
 
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

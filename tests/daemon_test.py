@@ -13,6 +13,7 @@ Authors:
 import socket
 import threading
 import pytest
+import time
 from src.daemon import Daemon
 from src import packet
 from src.packet import RIPEntry, RIPPacket
@@ -68,3 +69,8 @@ def test_connection():
     # decoded_packet = packet.decode_packet(encoded_packet)
     t1.start()
     t2.start()
+
+
+    time.sleep(2)
+
+    d2.send_packet(packet.encode_packet(RIPPacket(3, 2, [])))
