@@ -21,6 +21,7 @@ import threading
 import packet
 from packet import RIPPacket, RIPEntry
 from routing_table import RoutingTable
+from update_timer import UpdateTimer
 
 def verify_input_ports(input_ports):
     """
@@ -137,6 +138,7 @@ class Daemon():
 
         # Initialise timers
         self.update_timer = None
+        self.select_timeout = None
 
         # Call methods
         self.read_config()
@@ -181,8 +183,7 @@ class Daemon():
 
                         case b"output-ports":
                             # Convert Port Number, Metric Value and Peer-Router ID into integers
-                            port, metric, router_id = [[int(v) for v in l.decode().split("-")] for l in line[1:]]
-                            self.outputs = [port, metric, router_id]
+                            self.outputs = [[int(v) for v in l.decode().split("-")] for l in line[1:]]
                             contains_output_ports = True
 
                             verify_output_ports(self.inputs, self.outputs)
@@ -257,36 +258,38 @@ class Daemon():
             if sock is not None:
                 sock.close()
 
+
+
     def main_loop(self):
         """
         Receive message
         """
+        print(f"{self.id} is starting!")
 
+        self.select_timeout = 0.1
         while True:
-            print("Waiting for requests...")
-            print(self.update_timer)
 
-
-            readable_sockets, _, _ = select.select(self.socks, [], [])
-
-
-
-
+            # Handle packets
+            readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
             for sock in readable_sockets:
                 if sock in self.socks:
                     try:
                         message, address = sock.recvfrom(1024)
-                        # cursender = ((address, self.socks.index(sock)))
-                        return packet.decode_packet(message)
+                        cursender = ((address, self.socks.index(sock)))
+                        inc_packet = packet.decode_packet(message)
+                        self.history.append((inc_packet.command, cursender))
+                        print(f"incoming ({self.id} <- {inc_packet.from_router_id}@{cursender[1]}): {inc_packet.command}")
+                        if inc_packet.command == 3:
+                            print(inc_packet)
+                            sys.exit()
+
                     except Exception as e:
                         print(e)
-                        return None
 
-
-
-            if packet.command == 3:
-                print(packet)
-                sys.exit()
+                    finally:
+                        for sock in self.socks:
+                            if sock is not None:
+                                sock.close()
 
 
     def __str__(self):
