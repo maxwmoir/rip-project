@@ -15,7 +15,7 @@ import socket
 import sys
 import select
 import time
-import threading
+import random
 
 # Local Imports
 import packet
@@ -138,7 +138,9 @@ class Daemon():
 
         # Initialise timers
         self.update_timer = None
+        self.naive_timer = None
         self.select_timeout = None
+        self.flood_interval = 1
 
         # Call methods
         self.read_config()
@@ -224,7 +226,7 @@ class Daemon():
                 print(e)
                 exit()
 
-    def send_packet(self, packet):
+    def send_packet(self, pack):
         """
         Send message to output port
         """
@@ -232,7 +234,6 @@ class Daemon():
         try:
             address = 'localhost'
             port = self.outputs[0][0]
-
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             except Exception as e:
@@ -241,7 +242,7 @@ class Daemon():
                 exit()
 
             sock.settimeout(1.0)
-            message = packet 
+            message = packet.encode_packet(pack)
 
             address = (address, port)
             try:
@@ -267,7 +268,22 @@ class Daemon():
         print(f"{self.id} is starting!")
 
         self.select_timeout = 0.1
+        self.naive_timer = time.time()
         while True:
+            if time.time() - self.naive_timer > self.flood_interval:
+                # Sending response to all neighbours   
+                ents = [
+                    RIPEntry(2, 3),
+                    RIPEntry(3, 6),
+                    RIPEntry(5, 5),
+                    RIPEntry(1, 2),
+                ]
+
+                a_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, ents)
+                self.send_packet(a_packet)
+
+                self.naive_timer = time.time()
+                self.flood_interval = 3 + random.randint(0, 1000) / 1000
 
             # Handle packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
@@ -277,16 +293,13 @@ class Daemon():
                         message, address = sock.recvfrom(1024)
                         cursender = ((address, self.socks.index(sock)))
                         inc_packet = packet.decode_packet(message)
-                        self.history.append((inc_packet.command, cursender))
-                        print(f"incoming ({self.id} <- {inc_packet.from_router_id}@{cursender[1]}): {inc_packet.command}")
+                        print(f"incoming ({self.id} <- {inc_packet.from_router_id}): {inc_packet.command}")
+
                         if inc_packet.command == 3:
-                            print(inc_packet)
                             sys.exit()
 
                     except Exception as e:
                         print(e)
-
-                    finally:
                         for sock in self.socks:
                             if sock is not None:
                                 sock.close()

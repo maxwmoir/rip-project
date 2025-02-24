@@ -42,6 +42,7 @@ def test_connection():
     '''
     Test Connection
     '''
+    print()
 
     d0 = Daemon('./tests/cfgs/cfg0.txt')
     d1 = Daemon('./tests/cfgs/cfg1.txt')
@@ -50,6 +51,7 @@ def test_connection():
     daemons = [d0, d1, d2, d3]
 
     for d in daemons:
+        print(d.id, d.inputs, d.outputs)
         for sock in d.socks:
             assert isinstance(sock, socket.socket)
 
@@ -64,16 +66,16 @@ def test_connection():
 
 
     # return
-    ents = [
-        RIPEntry(2, 3),
-        RIPEntry(3, 6),
-        RIPEntry(5, 5),
-        RIPEntry(1, 2),
-    ]
+    # ents = [
+    #     RIPEntry(2, 3),
+    #     RIPEntry(3, 6),
+    #     RIPEntry(5, 5),
+    #     RIPEntry(1, 2),
+    # ]
 
-    a_packet = RIPPacket(packet.COMMAND_RESPONSE, 2, ents)
+    # a_packet = RIPPacket(packet.COMMAND_RESPONSE, 2, ents)
 
-    encoded_packet = packet.encode_packet(a_packet)
+    # encoded_packet = packet.encode_packet(a_packet)
 
 
     # t1 = threading.Thread(target=d1.main_loop)
@@ -88,7 +90,7 @@ def test_connection():
 
     # time.sleep(3)
 
-    d2.send_packet(packet.encode_packet(RIPPacket(3, 2, [])))
+    # d2.send_packet(packet.encode_packet(RIPPacket(3, 2, [])))
 
     # time.sleep(1)
 
