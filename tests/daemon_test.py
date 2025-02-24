@@ -71,6 +71,6 @@ def test_connection():
     t2.start()
 
 
-    time.sleep(2)
+    time.sleep(8)
 
     d2.send_packet(packet.encode_packet(RIPPacket(3, 2, [])))

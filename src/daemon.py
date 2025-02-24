@@ -15,6 +15,7 @@ import socket
 import sys
 import select
 import time
+import threading
 
 # Local Imports
 import packet
@@ -135,10 +136,7 @@ class Daemon():
         self.history = [] # For testing
 
         # Initialise timers
-        self.update_timer = time.time()
-        self.invalid_timer = None
-        self.holddown_timer = None
-        self.flush_timer = None
+        self.update_timer = None
 
         # Call methods
         self.read_config()
@@ -225,38 +223,6 @@ class Daemon():
                 print(e)
                 exit()
 
-
-    def receive_packet(self):
-        """
-        Receive packet from another server
-        """
-        read_sockets, _, _ = select.select(self.socks, [], [])
-        for sock in read_sockets:
-            if sock in self.socks:
-                try:
-                    message, address = sock.recvfrom(1024)
-                    cursender = ((address, self.socks.index(sock)))
-                    return packet.decode_packet(message)
-                except Exception as e:
-                    print(e)
-                    return None
-        return None
-
-
-    def main_loop(self):
-        """
-        Receive message
-        """
-        while True:
-            print("Waiting for requests...")
-            print(self.update_timer)
-
-            packet = self.receive_packet()
-
-            if packet.command == 3:
-                print(packet)
-                sys.exit()
-
     def send_packet(self, packet):
         """
         Send message to output port
@@ -291,6 +257,36 @@ class Daemon():
             if sock is not None:
                 sock.close()
 
+    def main_loop(self):
+        """
+        Receive message
+        """
+
+        while True:
+            print("Waiting for requests...")
+            print(self.update_timer)
+
+
+            readable_sockets, _, _ = select.select(self.socks, [], [])
+
+
+
+
+            for sock in readable_sockets:
+                if sock in self.socks:
+                    try:
+                        message, address = sock.recvfrom(1024)
+                        # cursender = ((address, self.socks.index(sock)))
+                        return packet.decode_packet(message)
+                    except Exception as e:
+                        print(e)
+                        return None
+
+
+
+            if packet.command == 3:
+                print(packet)
+                sys.exit()
 
 
     def __str__(self):
