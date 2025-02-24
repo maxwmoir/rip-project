@@ -230,34 +230,36 @@ class Daemon():
         """
         Send message to output port
         """
-        sock = None
-        try:
-            address = 'localhost'
-            port = self.outputs[0][0]
+        for output in self.outputs:
+            sock = None
             try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            except Exception as e:
-                print("ERROR: Socket creation failed")
-                print(e)
-                exit()
+                address = 'localhost'
+                port = output[0]
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                except Exception as e:
+                    print("ERROR: Socket creation failed")
+                    print(e)
+                    exit()
 
-            sock.settimeout(1.0)
-            message = packet.encode_packet(pack)
+                sock.settimeout(1.0)
+                message = packet.encode_packet(pack)
 
-            address = (address, port)
-            try:
-                sock.sendto(message, address)
-            except Exception as e:
-                print("ERROR: Sending failed")
-                print(e)
-                exit()
+                address = (address, port)
+                try:
+                    sock.sendto(message, address)
 
-        except Exception as error:
-            print(f"ERROR: {error}")
+                except Exception as e:
+                    print("ERROR: Sending failed")
+                    print(e)
+                    exit()
 
-        finally:
-            if sock is not None:
-                sock.close()
+            except Exception as error:
+                print(f"ERROR: {error}")
+
+            finally:
+                if sock is not None:
+                    sock.close()
 
 
 
