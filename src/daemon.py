@@ -261,31 +261,24 @@ class Daemon():
                 if sock is not None:
                     sock.close()
 
-
-
     def main_loop(self):
         """
         Receive message
         """
         print(f"{self.id} is starting!")
 
+        self.table.add_route(self.id, self.id, 0)
         self.select_timeout = 0.1
         self.naive_timer = time.time()
         while True:
             if time.time() - self.naive_timer > self.flood_interval:
                 # Sending response to all neighbours   
-                ents = [
-                    RIPEntry(2, 3),
-                    RIPEntry(3, 6),
-                    RIPEntry(5, 5),
-                    RIPEntry(1, 2),
-                ]
 
-                a_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, ents)
+                a_packet = RIPPacket(packet.COMMAND_REQUEST, self.id)
                 self.send_packet(a_packet)
 
                 self.naive_timer = time.time()
-                self.flood_interval = 3 + random.randint(0, 1000) / 1000
+                self.flood_interval = 3 * random.randint(800, 1200) / 1000
 
             # Handle packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
@@ -333,10 +326,10 @@ if __name__ == "__main__":
         RIPEntry(1, 2),
     ]
 
-    a_packet = RIPPacket(packet.COMMAND_RESPONSE, 2, ents)
+    # a_packet = RIPPacket(packet.COMMAND_RESPONSE, 2, ents)
 
-    encoded_packet = packet.encode_packet(a_packet)
-    decoded_packet = packet.decode_packet(encoded_packet)
+    # encoded_packet = packet.encode_packet(a_packet)
+    # decoded_packet = packet.decode_packet(encoded_packet)
 
-    print(a_packet)
-    print(decoded_packet)
+    # print(a_packet)
+    # print(decoded_packet)

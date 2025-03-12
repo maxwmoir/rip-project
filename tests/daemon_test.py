@@ -51,9 +51,9 @@ def test_connection():
     daemons = [d0, d1, d2, d3]
 
     for d in daemons:
-        print(d.id, d.inputs, d.outputs)
         for sock in d.socks:
             assert isinstance(sock, socket.socket)
+            assert len(d.inputs) == len(d.outputs)
 
     threads = []
 

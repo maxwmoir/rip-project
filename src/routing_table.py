@@ -38,3 +38,13 @@ class RoutingTable():
 
         route = routing_entry.RoutingEntry(destination, next_hop, num_hops)
         self.routes.append(route)
+
+    def print_table(self):
+        """
+        Prints out the routing table infomation
+        """
+        print()
+        print("dest next num_hops")
+        for route in self.routes:
+            print(f"{route.destination}    {route.next_hop}    {route.num_hops}")
+
