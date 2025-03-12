@@ -25,26 +25,25 @@ class RoutingTable():
         self.routes = []
 
 
-    def add_route(self, destination, next_hop, num_hops):
+    def add_route(self, destination, next_hop, metric):
         """
         Add a new route to the routing table.
 
         Args:
             destination (int): The port number of the destination router
             next_hop (int): The port number of the next router in-sequence
-            num_hops (int): The cost to reach the next router
+            metric (int): The cost to reach the destination router 
 
         """
 
-        route = routing_entry.RoutingEntry(destination, next_hop, num_hops)
+        route = routing_entry.RoutingEntry(destination, next_hop, metric)
         self.routes.append(route)
 
     def print_table(self):
         """
         Prints out the routing table infomation
         """
-        print()
         print("dest next num_hops")
         for route in self.routes:
-            print(f"{route.destination}    {route.next_hop}    {route.num_hops}")
+            print(f"{route.destination}    {route.next_hop}    {route.metric}")
 

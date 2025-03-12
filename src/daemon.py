@@ -135,6 +135,7 @@ class Daemon():
         self.state = "start"
         self.table = RoutingTable()
         self.history = [] # For testing
+        self.C = {}
 
         # Initialise timers
         self.update_timer = None
@@ -145,6 +146,8 @@ class Daemon():
         # Call methods
         self.read_config()
         self.bind_sockets()
+
+        self.request_packet = RIPPacket(packet.COMMAND_REQUEST, self.id)
 
         # ::DEBUG:: Print socket configuration
         # for sock in self.socks:
@@ -185,7 +188,12 @@ class Daemon():
 
                         case b"output-ports":
                             # Convert Port Number, Metric Value and Peer-Router ID into integers
-                            self.outputs = [[int(v) for v in l.decode().split("-")] for l in line[1:]]
+                            outs = [[int(v) for v in l.decode().split("-")] for l in line[1:]]
+
+                            for out in outs:
+                                self.C[out[2]] = out[1]
+
+                            self.outputs = outs
                             contains_output_ports = True
 
                             verify_output_ports(self.inputs, self.outputs)
@@ -226,9 +234,49 @@ class Daemon():
                 print(e)
                 exit()
 
-    def send_packet(self, pack):
+
+    def send_packet(self, pack, dest):
         """
         Send message to output port
+        """
+
+        output = None
+        for o in self.outputs:
+            if o[2] == dest:
+                output = o
+
+        if not output:
+            return
+
+        try:
+            address = 'localhost'
+            port = output[0]
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            except Exception as e:
+                print("ERROR: Socket creation failed")
+                print(e)
+                exit()
+
+            sock.settimeout(1.0)
+            message = packet.encode_packet(pack)
+
+            address = (address, port)
+            try:
+                sock.sendto(message, address)
+
+            except Exception as e:
+                print("ERROR: Sending failed")
+                print(e)
+                exit()
+        finally:
+            if sock is not None:
+                sock.close()
+
+
+    def flood_requests(self):
+        """
+        Flood all adjacent routers with request packets
         """
         for output in self.outputs:
             sock = None
@@ -243,7 +291,7 @@ class Daemon():
                     exit()
 
                 sock.settimeout(1.0)
-                message = packet.encode_packet(pack)
+                message = packet.encode_packet(self.request_packet)
 
                 address = (address, port)
                 try:
@@ -260,7 +308,7 @@ class Daemon():
             finally:
                 if sock is not None:
                     sock.close()
-
+ 
     def main_loop(self):
         """
         Receive message
@@ -272,25 +320,53 @@ class Daemon():
         self.naive_timer = time.time()
         while True:
             if time.time() - self.naive_timer > self.flood_interval:
-                # Sending response to all neighbours   
-
-                a_packet = RIPPacket(packet.COMMAND_REQUEST, self.id)
-                self.send_packet(a_packet)
-
+                # Send a request packet to all neighbours
+                self.flood_requests()
                 self.naive_timer = time.time()
                 self.flood_interval = 3 * random.randint(800, 1200) / 1000
+                # for testing
+                # self.flood_interval += 100000000 
+
 
             # Handle packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
             for sock in readable_sockets:
                 if sock in self.socks:
                     try:
-                        message, address = sock.recvfrom(1024)
-                        cursender = ((address, self.socks.index(sock)))
+                        message, _ = sock.recvfrom(1024)
+                        # cursender = ((address, self.socks.index(sock)))
                         inc_packet = packet.decode_packet(message)
-                        print(f"incoming ({self.id} <- {inc_packet.from_router_id}): {inc_packet.command}")
+                        # print(f"incoming ({self.id} <- {inc_packet.from_router_id}): {inc_packet.command}")
+
+                        if inc_packet.command == 1:
+                            # Send responses
+                            entries = [RIPEntry(route.destination, route.metric) for route in self.table.routes]
+                            response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
+                            self.send_packet(response_packet, inc_packet.from_router_id)
+
+                        if inc_packet.command == 2:
+                            routes = {route.destination : route for route in self.table.routes}
+                            for entry in inc_packet.entries:
+                                if entry.to_router_id in routes.keys():
+                                    # print(self.id, inc_packet.from_router_id, self.C[inc_packet.from_router_id] + entry.metric, routes[entry.to_router_id].metric)
+                                    # print(self.id, "<-", inc_packet.from_router_id, entry.to_router_id, entry.metric + self.C[inc_packet.from_router_id])
+                                    if entry.metric + self.C[inc_packet.from_router_id] < routes[entry.to_router_id].metric:
+                                        routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
+                                        routes[entry.to_router_id].next_hop = inc_packet.from_router_id
+
+                                    # if self.C[inc_packet.from_router_id] + entry.metric < routes[entry.to_router_id].metric:
+                                    #     print(self.id)
+                                else:
+                                    self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
+
+                            # if self.id == 1:
+                            #     self.table.print_table()
+                            pass
+
 
                         if inc_packet.command == 3:
+                            # Handle packet requesting shutdown 
+                            # For testing 
                             sys.exit()
 
                     except Exception as e:

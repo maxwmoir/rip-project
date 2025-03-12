@@ -1,6 +1,6 @@
 router-id 3
 input-ports 6230 
-output-ports 6320-1-1
+output-ports 6320-2-2
 
 
 

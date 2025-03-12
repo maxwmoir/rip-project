@@ -63,6 +63,11 @@ def test_connection():
         threads.append(thread)
         thread.start()
 
+    while True:
+        time.sleep(2)
+        print("_________________")
+        for d in daemons:
+            d.table.print_table()
 
 
     # return

@@ -15,7 +15,7 @@ class RoutingEntry():
     Class for storing information about a routing connection.
     """
 
-    def __init__(self, destination, next_hop, num_hops):
+    def __init__(self, destination, next_hop, metric):
         """
         Initialise a new routing table entry.
 
@@ -27,5 +27,6 @@ class RoutingEntry():
 
         self.destination = destination
         self.next_hop = next_hop
-        self.num_hops = num_hops
+        self.metric = metric
+        self.num_hops = None
         # ...
