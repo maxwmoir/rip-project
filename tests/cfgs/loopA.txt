@@ -1,0 +1,7 @@
+router-id 0
+input-ports 6100 6200 
+output-ports 6010-4-1 6020-50-2
+
+
+
+

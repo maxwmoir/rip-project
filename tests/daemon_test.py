@@ -12,11 +12,9 @@ Authors:
 
 import socket
 import threading
-import pytest
 import time
+import pytest
 from src.daemon import Daemon
-from src import packet
-from src.packet import RIPEntry, RIPPacket
 
 
 @pytest.fixture(name='daemon')
@@ -37,6 +35,50 @@ def test_creation(daemon):
     for sock in daemon.socks:
         assert isinstance(sock, socket.socket)
 
+def test_routing_loop():
+    '''
+    Routing loop test from page 29 from the routing booklet
+
+        4   B    1
+         //   \\
+        A   -  C
+           50
+
+            |
+            V
+
+       100  B    1
+         //   \\
+        A   -  C
+           50
+
+    '''
+    print()
+
+    d0 = Daemon('./tests/cfgs/loopA.txt')
+    d1 = Daemon('./tests/cfgs/loopB.txt')
+    d2 = Daemon('./tests/cfgs/loopC.txt')
+    daemons = [d0, d1, d2]
+
+    for d in daemons:
+        for sock in d.socks:
+            assert isinstance(sock, socket.socket)
+            assert len(d.inputs) == len(d.outputs)
+
+    threads = []
+
+    print()
+    for d in daemons:
+        thread = threading.Thread(target=d.main_loop)
+        threads.append(thread)
+        thread.start()
+
+    time.sleep(5)
+    print()
+    for i, d in enumerate(daemons):
+        print()
+        print("Node", chr(ord('A') + i))
+        d.table.print_table()
 
 def test_connection():
     '''
@@ -64,11 +106,10 @@ def test_connection():
         thread.start()
 
     while True:
-        time.sleep(2)
-        print("_________________")
+        time.sleep(4)
+        print()
         for d in daemons:
             d.table.print_table()
-
 
     # return
     # ents = [
@@ -85,7 +126,6 @@ def test_connection():
 
     # t1 = threading.Thread(target=d1.main_loop)
     # t2 = threading.Thread(target=d2.main_loop)
-    
     # t1.start()
     # t2.start()
 

@@ -76,7 +76,7 @@ def verify_output_ports(input_ports, output_ports):
         valid = verify_port_number(port)
 
         # Check metric validity
-        if not 1 <= metric <= 15:
+        if not 1 <= metric <= 500:
             valid = False
 
         # Check if port is a duplicate
@@ -163,7 +163,7 @@ class Daemon():
         except OSError:
             print ("Could not read file")
             exit()
-        
+
         # Read File
         with f:
             lines = f.readlines()
@@ -173,7 +173,7 @@ class Daemon():
             contains_output_ports = False
 
             for line in [l.split() for l in lines]:
-                if (len(line)):
+                if len(line):
                     match line[0]:
                         case b"router-id":
                             self.id = int(line[1])
@@ -308,10 +308,10 @@ class Daemon():
             finally:
                 if sock is not None:
                     sock.close()
- 
+
     def main_loop(self):
         """
-        Receive message
+        Router mainloop
         """
         print(f"{self.id} is starting!")
 
@@ -324,19 +324,14 @@ class Daemon():
                 self.flood_requests()
                 self.naive_timer = time.time()
                 self.flood_interval = 3 * random.randint(800, 1200) / 1000
-                # for testing
-                # self.flood_interval += 100000000 
 
-
-            # Handle packets
+            # Handle received packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
             for sock in readable_sockets:
                 if sock in self.socks:
                     try:
                         message, _ = sock.recvfrom(1024)
-                        # cursender = ((address, self.socks.index(sock)))
                         inc_packet = packet.decode_packet(message)
-                        # print(f"incoming ({self.id} <- {inc_packet.from_router_id}): {inc_packet.command}")
 
                         if inc_packet.command == 1:
                             # Send responses
@@ -348,25 +343,15 @@ class Daemon():
                             routes = {route.destination : route for route in self.table.routes}
                             for entry in inc_packet.entries:
                                 if entry.to_router_id in routes.keys():
-                                    # print(self.id, inc_packet.from_router_id, self.C[inc_packet.from_router_id] + entry.metric, routes[entry.to_router_id].metric)
-                                    # print(self.id, "<-", inc_packet.from_router_id, entry.to_router_id, entry.metric + self.C[inc_packet.from_router_id])
                                     if entry.metric + self.C[inc_packet.from_router_id] < routes[entry.to_router_id].metric:
                                         routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
                                         routes[entry.to_router_id].next_hop = inc_packet.from_router_id
-
-                                    # if self.C[inc_packet.from_router_id] + entry.metric < routes[entry.to_router_id].metric:
-                                    #     print(self.id)
                                 else:
                                     self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
 
-                            # if self.id == 1:
-                            #     self.table.print_table()
-                            pass
-
-
                         if inc_packet.command == 3:
-                            # Handle packet requesting shutdown 
-                            # For testing 
+                            # Handle packet requesting shutdown
+                            # For testing
                             sys.exit()
 
                     except Exception as e:
@@ -394,18 +379,3 @@ class Daemon():
 if __name__ == "__main__":
     config_name = sys.argv[1]
     daemon = Daemon(config_name)
-
-    ents = [
-        RIPEntry(2, 3),
-        RIPEntry(3, 6),
-        RIPEntry(5, 5),
-        RIPEntry(1, 2),
-    ]
-
-    # a_packet = RIPPacket(packet.COMMAND_RESPONSE, 2, ents)
-
-    # encoded_packet = packet.encode_packet(a_packet)
-    # decoded_packet = packet.decode_packet(encoded_packet)
-
-    # print(a_packet)
-    # print(decoded_packet)
