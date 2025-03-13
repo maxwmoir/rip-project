@@ -55,9 +55,9 @@ def test_routing_loop():
     '''
     print()
 
-    d0 = Daemon('./tests/cfgs/loopA.txt')
-    d1 = Daemon('./tests/cfgs/loopB.txt')
-    d2 = Daemon('./tests/cfgs/loopC.txt')
+    d0 = Daemon('./tests/cfgs/graph2/loopA.txt')
+    d1 = Daemon('./tests/cfgs/graph2/loopB.txt')
+    d2 = Daemon('./tests/cfgs/graph2/loopC.txt')
     daemons = [d0, d1, d2]
 
     for d in daemons:
@@ -86,10 +86,10 @@ def test_connection():
     '''
     print()
 
-    d0 = Daemon('./tests/cfgs/cfg0.txt')
-    d1 = Daemon('./tests/cfgs/cfg1.txt')
-    d2 = Daemon('./tests/cfgs/cfg2.txt')
-    d3 = Daemon('./tests/cfgs/cfg3.txt')
+    d0 = Daemon('./tests/cfgs/graph1/cfg0.txt')
+    d1 = Daemon('./tests/cfgs/graph1/cfg1.txt')
+    d2 = Daemon('./tests/cfgs/graph1/cfg2.txt')
+    d3 = Daemon('./tests/cfgs/graph1/cfg3.txt')
     daemons = [d0, d1, d2, d3]
 
     for d in daemons:
@@ -141,3 +141,41 @@ def test_connection():
 
     # assert len(d1.history) == 4
     # assert len(d2.history) == 0
+
+
+def test_final_graph():
+    '''
+    Routing loop test from page 29 from the routing booklet
+    '''
+    print()
+
+    daemons = [Daemon(f"./tests/cfgs/figure1/cfg{i + 1}.txt") for i in range(7)]
+
+    for d in daemons:
+        for sock in d.socks:
+            assert isinstance(sock, socket.socket)
+            assert len(d.inputs) == len(d.outputs)
+
+    threads = []
+
+    print()
+    for d in daemons:
+        thread = threading.Thread(target=d.main_loop)
+        threads.append(thread)
+        thread.start()
+
+    time.sleep(5)
+    for i, d in enumerate(daemons):
+        print()
+        print("Node", 1 + i)
+        d.table.print_table()
+
+    daemons[3].running = False
+
+    print("Killing node 4")
+
+    time.sleep(5)
+    for i, d in enumerate(daemons):
+        print()
+        print("Node", 1 + i)
+        d.table.print_table()

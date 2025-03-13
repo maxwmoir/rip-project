@@ -136,6 +136,7 @@ class Daemon():
         self.table = RoutingTable()
         self.history = [] # For testing
         self.C = {}
+        self.running = True
 
         # Initialise timers
         self.update_timer = None
@@ -318,7 +319,7 @@ class Daemon():
         self.table.add_route(self.id, self.id, 0)
         self.select_timeout = 0.1
         self.naive_timer = time.time()
-        while True:
+        while self.running:
             if time.time() - self.naive_timer > self.flood_interval:
                 # Send a request packet to all neighbours
                 self.flood_requests()
