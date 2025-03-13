@@ -174,7 +174,7 @@ def test_final_graph():
 
     print("Killing node 4")
 
-    time.sleep(5)
+    time.sleep(10)
     for i, d in enumerate(daemons):
         print()
         print("Node", 1 + i)

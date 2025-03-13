@@ -142,6 +142,7 @@ class Daemon():
         self.update_timer = None
         self.naive_timer = None
         self.select_timeout = None
+        self.clear_timer = None
         self.flood_interval = 1
 
         # Call methods
@@ -319,12 +320,18 @@ class Daemon():
         self.table.add_route(self.id, self.id, 0)
         self.select_timeout = 0.1
         self.naive_timer = time.time()
+        self.clear_timer = time.time()
         while self.running:
             if time.time() - self.naive_timer > self.flood_interval:
                 # Send a request packet to all neighbours
                 self.flood_requests()
                 self.naive_timer = time.time()
                 self.flood_interval = 3 * random.randint(800, 1200) / 1000
+
+            if time.time() - self.clear_timer > 5:
+                self.table = RoutingTable()
+                self.table.add_route(self.id, self.id, 0)
+                self.clear_timer = time.time()
 
             # Handle received packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)

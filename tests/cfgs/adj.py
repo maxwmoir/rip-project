@@ -3,6 +3,8 @@ Auto generate configs from adjacency matrix
 
 """
 
+GRAPH_NAME = "figure1"
+
 graph = [
     [0, 0, 0, 0, 0, 0, 0, 0],
     [0, 0, 1, 0, 0, 0, 5, 8],
@@ -14,10 +16,9 @@ graph = [
     [0, 8, 0, 0, 6, 0, 0, 0],
 ]
 
-
 for i, row in enumerate(graph):
     if sum(row) > 0:
-        with open(f"./figure1/cfg{i}.txt", "a", encoding='utf-8') as f:
+        with open(f"./{GRAPH_NAME}/cfg{i}.txt", "a", encoding='utf-8') as f:
             f.write(f"router-id {i}\n")
 
             input_line  = "input-ports"
