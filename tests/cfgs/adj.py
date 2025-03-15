@@ -3,7 +3,7 @@ Auto generate configs from adjacency matrix
 
 """
 
-GRAPH_NAME = "figure1"
+GRAPH_NAME = "figure"
 
 graph = [
     [0, 0, 0, 0, 0, 0, 0, 0],
