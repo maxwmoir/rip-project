@@ -315,7 +315,7 @@ class Daemon():
         """
         Router mainloop
         """
-        print(f"{self.id} is starting!")
+        # print(f"{self.id} is starting!")
 
         self.table.add_route(self.id, self.id, 0)
         self.select_timeout = 0.1

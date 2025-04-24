@@ -84,7 +84,7 @@ def test_connection():
     '''
     Test Connection
     '''
-    print()
+    print("HERE")
 
     d0 = Daemon('./tests/cfgs/graph1/cfg0.txt')
     d1 = Daemon('./tests/cfgs/graph1/cfg1.txt')
@@ -142,6 +142,23 @@ def test_connection():
     # assert len(d1.history) == 4
     # assert len(d2.history) == 0
 
+def print_router_graph(daemons):
+    graph = [[(1, 1) for x in range(7)] for x in range(7)]
+    for i, d in enumerate(daemons):
+        for route in d.table.routes:
+            graph[i][route.destination - 1] = (route.next_hop, route.metric)
+
+    table_str = ["", "", "", "", "", "", "", "", ""]
+    for i, router in enumerate(graph): 
+        table_str[0] += f"    Router {i + 1}        "
+        table_str[1] += f"dest next hops      "
+        
+        for d in range(7):
+            
+            table_str[2 + d] += f" {d + 1:2d}   {graph[i][d][0]:2d}   {graph[i][d][1]:2d}       "
+    print("\n".join(table_str))
+    return graph
+
 
 def test_final_graph():
     '''
@@ -158,24 +175,17 @@ def test_final_graph():
 
     threads = []
 
-    print()
     for d in daemons:
         thread = threading.Thread(target=d.main_loop)
         threads.append(thread)
         thread.start()
 
     time.sleep(5)
-    for i, d in enumerate(daemons):
-        print()
-        print("Node", 1 + i)
-        d.table.print_table()
 
+    graph = print_router_graph(daemons)
+
+    print("\nKilling node 4\n")
     daemons[3].running = False
-
-    print("Killing node 4")
-
     time.sleep(10)
-    for i, d in enumerate(daemons):
-        print()
-        print("Node", 1 + i)
-        d.table.print_table()
+
+    graph = print_router_graph(daemons)
