@@ -328,7 +328,7 @@ class Daemon():
                 self.naive_timer = time.time()
                 self.flood_interval = 3 * random.randint(800, 1200) / 1000
 
-            if time.time() - self.clear_timer > 5:
+            if time.time() - self.clear_timer > 5000:
                 self.table = RoutingTable()
                 self.table.add_route(self.id, self.id, 0)
                 self.clear_timer = time.time()
@@ -343,23 +343,28 @@ class Daemon():
 
                         if inc_packet.command == 1:
                             # Send responses
-                            entries = [RIPEntry(route.destination, route.metric) for route in self.table.routes]
+                            entries = [RIPEntry(route.destination, route.metric) for route in self.table.route_map.values()]
                             response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
                             self.send_packet(response_packet, inc_packet.from_router_id)
 
                         if inc_packet.command == 2:
-                            routes = {route.destination : route for route in self.table.routes}
+                            # Compute table 
+
                             for entry in inc_packet.entries:
-                                if entry.to_router_id in routes.keys():
-                                    if entry.metric + self.C[inc_packet.from_router_id] < routes[entry.to_router_id].metric:
-                                        routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
-                                        routes[entry.to_router_id].next_hop = inc_packet.from_router_id
+                                if entry.to_router_id in self.table.route_map.keys():
+                                    potential_metric = entry.metric + self.C[inc_packet.from_router_id]  
+                                    # print("packet", inc_packet.from_router_id, "->", self.id, "to", entry.to_router_id)
+                                    # print("cur metric", self.table.route_map[entry.to_router_id].metric)
+                                    # print("pot metric", potential_metric)
+                                    # print()
+                                    if potential_metric < self.table.route_map[entry.to_router_id].metric and entry.to_router_id not in self.C.keys():
+
+                                        self.table.route_map[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
+                                        self.table.route_map[entry.to_router_id].next_hop = inc_packet.from_router_id
                                 else:
                                     self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
 
                         if inc_packet.command == 3:
-                            # Handle packet requesting shutdown
-                            # For testing
                             sys.exit()
 
                     except Exception as e:

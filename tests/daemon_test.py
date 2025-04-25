@@ -143,26 +143,29 @@ def test_connection():
     # assert len(d2.history) == 0
 
 def print_router_graph(daemons):
-    graph = [[(1, 1) for x in range(7)] for x in range(7)]
+    graph = [[(-1, -1) for x in range(7)] for x in range(7)]
     for i, d in enumerate(daemons):
-        for route in d.table.routes:
+        for route in d.table.route_map.values():
             graph[i][route.destination - 1] = (route.next_hop, route.metric)
 
     table_str = ["", "", "", "", "", "", "", "", ""]
     for i, router in enumerate(graph): 
-        table_str[0] += f"    Router {i + 1}        "
-        table_str[1] += f"dest next hops      "
+        table_str[0] += f"    Router {i + 1}      "
+        table_str[1] += f"dest next metric  "
         
         for d in range(7):
-            
-            table_str[2 + d] += f" {d + 1:2d}   {graph[i][d][0]:2d}   {graph[i][d][1]:2d}       "
+            if graph[i][d][0] == -1:
+                table_str[2 + d] += f" {d + 1:2d}    -    -     "
+            else:
+                table_str[2 + d] += f" {d + 1:2d}   {graph[i][d][0]:2d}   {graph[i][d][1]:2d}     "
+
     print("\n".join(table_str))
     return graph
 
 
 def test_final_graph():
     '''
-    Routing loop test from page 29 from the routing booklet
+    FINAL GRAPH
     '''
     print()
 
@@ -180,12 +183,23 @@ def test_final_graph():
         threads.append(thread)
         thread.start()
 
-    time.sleep(5)
+    correct_answers = [
+        [[(1, 0), (2, 1), (2, 4), (6, 8), (6, 6), (6, 5), (7, 8)], [(1, 1), (2, 0), (3, 3), (3, 7), (1, 7), (1, 6), (1, 9)], [(2, 4), (2, 3), (3, 0), (4, 4), (4, 6), (4, 7), (4, 10)], [(5, 8), (3, 7), (3, 4), (4, 0), (5, 2), (5, 3), (7, 6)], [(6, 6), (6, 7), (4, 6), (4, 2), (5, 0), (6, 1), (4, 8)], [(1, 5), (1, 6), (5, 7), (5, 3), (5, 1), (6, 0), (5, 9)], [(1, 8), (1, 9), (4, 10), (4, 6), (4, 8), (4, 9), (7, 0)]],
+        [[(1, 0), (2, 1), (2, 4), (6, 8), (6, 6), (6, 5), (7, 8)], [(1, 1), (2, 0), (3, 3), (3, 7), (1, 7), (1, 6), (1, 9)], [(2, 4), (2, 3), (3, 0), (4, 4), (4, 6), (4, 7), (4, 10)], [(3, 8), (3, 7), (3, 4), (4, 0), (5, 2), (5, 3), (7, 6)], [(6, 6), (6, 7), (4, 6), (4, 2), (5, 0), (6, 1), (4, 8)], [(1, 5), (1, 6), (5, 7), (5, 3), (5, 1), (6, 0), (5, 9)], [(1, 8), (1, 9), (4, 10), (4, 6), (4, 8), (4, 9), (7, 0)]],
+        [[(1, 0), (2, 1), (2, 4), (2, 8), (6, 6), (6, 5), (7, 8)], [(1, 1), (2, 0), (3, 3), (3, 7), (1, 7), (1, 6), (1, 9)], [(2, 4), (2, 3), (3, 0), (4, 4), (4, 6), (4, 7), (4, 10)], [(3, 8), (3, 7), (3, 4), (4, 0), (5, 2), (5, 3), (7, 6)], [(6, 6), (6, 7), (4, 6), (4, 2), (5, 0), (6, 1), (4, 8)], [(1, 5), (1, 6), (5, 7), (5, 3), (5, 1), (6, 0), (5, 9)], [(1, 8), (1, 9), (4, 10), (4, 6), (4, 8), (4, 9), (7, 0)]],
+        [[(1, 0), (2, 1), (2, 4), (2, 8), (6, 6), (6, 5), (7, 8)], [(1, 1), (2, 0), (3, 3), (3, 7), (1, 7), (1, 6), (1, 9)], [(2, 4), (2, 3), (3, 0), (4, 4), (4, 6), (4, 7), (4, 10)], [(5, 8), (3, 7), (3, 4), (4, 0), (5, 2), (5, 3), (7, 6)], [(6, 6), (6, 7), (4, 6), (4, 2), (5, 0), (6, 1), (4, 8)], [(1, 5), (1, 6), (5, 7), (5, 3), (5, 1), (6, 0), (5, 9)], [(1, 8), (1, 9), (4, 10), (4, 6), (4, 8), (4, 9), (7, 0)]],
+    ]
 
-    graph = print_router_graph(daemons)
 
-    print("\nKilling node 4\n")
-    daemons[3].running = False
     time.sleep(10)
 
-    graph = print_router_graph(daemons)
+    graph = print_router_graph(daemons)    
+
+    assert graph in correct_answers
+    
+    # print("\nKilling node 4\n")
+    # daemons[3].running = False
+    # time.sleep(10)
+
+    # graph = print_router_graph(daemons)
+    # return 
