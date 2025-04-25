@@ -326,12 +326,12 @@ class Daemon():
                 # Send a request packet to all neighbours
                 self.flood_requests()
                 self.naive_timer = time.time()
-                self.flood_interval = 3 * random.randint(800, 1200) / 1000
+                self.flood_interval = 3 * random.randint(800, 1200) / 5000
 
-            if time.time() - self.clear_timer > 5000:
+            if time.time() - self.clear_timer > 5:
+                self.clear_timer = time.time()
                 self.table = RoutingTable()
                 self.table.add_route(self.id, self.id, 0)
-                self.clear_timer = time.time()
 
             # Handle received packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
@@ -357,7 +357,7 @@ class Daemon():
                                     # print("cur metric", self.table.route_map[entry.to_router_id].metric)
                                     # print("pot metric", potential_metric)
                                     # print()
-                                    if potential_metric < self.table.route_map[entry.to_router_id].metric and entry.to_router_id not in self.C.keys():
+                                    if potential_metric < self.table.route_map[entry.to_router_id].metric:
 
                                         self.table.route_map[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
                                         self.table.route_map[entry.to_router_id].next_hop = inc_packet.from_router_id
