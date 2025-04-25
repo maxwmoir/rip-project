@@ -23,6 +23,15 @@ from packet import RIPPacket, RIPEntry
 from routing_table import RoutingTable
 from update_timer import UpdateTimer
 
+
+# Constants 
+RESPONSE_MESSAGE_INTERVAL = 30
+ROUTE_TIMOUT = 180
+GARBAGE_COLLECTION_TIME = 120
+
+
+
+
 def verify_input_ports(input_ports):
     """
     Helper method to check validity of the input port numbers.
@@ -151,10 +160,6 @@ class Daemon():
 
         self.request_packet = RIPPacket(packet.COMMAND_REQUEST, self.id)
 
-        # ::DEBUG:: Print socket configuration
-        # for sock in self.socks:
-            # print(sock)
-
     def read_config(self):
         """
         Read the stored config file.
@@ -212,8 +217,6 @@ class Daemon():
         """
 
         for i, port in enumerate(self.inputs):
-            # print(f"Binding socket to port {port}")
-
             # Create each socket
             try:
                 self.socks.append(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
@@ -311,13 +314,15 @@ class Daemon():
                 if sock is not None:
                     sock.close()
 
-    def main_loop(self):
+
+    def start(self):
         """
         Router mainloop
         """
-        # print(f"{self.id} is starting!")
 
+        # Don't want it to do this eventually:
         self.table.add_route(self.id, self.id, 0)
+
         self.select_timeout = 0.1
         self.naive_timer = time.time()
         self.clear_timer = time.time()
@@ -343,7 +348,7 @@ class Daemon():
 
                         if inc_packet.command == 1:
                             # Send responses
-                            entries = [RIPEntry(route.destination, route.metric) for route in self.table.route_map.values()]
+                            entries = [RIPEntry(route.destination, route.metric) for route in self.table.routes.values()]
                             response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
                             self.send_packet(response_packet, inc_packet.from_router_id)
 
@@ -351,16 +356,12 @@ class Daemon():
                             # Compute table 
 
                             for entry in inc_packet.entries:
-                                if entry.to_router_id in self.table.route_map.keys():
+                                if entry.to_router_id in self.table.routes.keys():
                                     potential_metric = entry.metric + self.C[inc_packet.from_router_id]  
-                                    # print("packet", inc_packet.from_router_id, "->", self.id, "to", entry.to_router_id)
-                                    # print("cur metric", self.table.route_map[entry.to_router_id].metric)
-                                    # print("pot metric", potential_metric)
-                                    # print()
-                                    if potential_metric < self.table.route_map[entry.to_router_id].metric:
+                                    if potential_metric < self.table.routes[entry.to_router_id].metric:
 
-                                        self.table.route_map[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
-                                        self.table.route_map[entry.to_router_id].next_hop = inc_packet.from_router_id
+                                        self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
+                                        self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
                                 else:
                                     self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
 

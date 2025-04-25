@@ -21,7 +21,7 @@ class RoutingTable():
         """
         Initialize the Routing Table
         """
-        self.route_map = {}
+        self.routes = {}
 
     def add_route(self, destination, next_hop, metric):
         """
@@ -35,8 +35,16 @@ class RoutingTable():
         """
 
         route = routing_entry.RoutingEntry(destination, next_hop, metric)
-        if destination not in self.route_map.keys():
-            self.route_map[destination] = route
+        if destination not in self.routes.keys():
+            self.routes[destination] = route
+        
+    def update_timers(self, age):
+        """
+        Update the age of each entry 
+        """
+        for route in self.routes.values:
+            route.age += age
+
 
 
     def print_table(self):
@@ -44,5 +52,5 @@ class RoutingTable():
         Prints out the routing table infomation
         """
         print("dest next num_hops")
-        for route in self.route_map.values():
+        for route in self.routes.values():
             print(f"{route.destination}    {route.next_hop}    {route.metric}")

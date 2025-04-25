@@ -146,7 +146,7 @@ def test_connection():
 def print_router_graph(daemons):
     graph = [[(-1, -1) for x in range(7)] for x in range(7)]
     for i, d in enumerate(daemons):
-        for route in d.table.route_map.values():
+        for route in d.table.routes.values():
             graph[i][route.destination - 1] = (route.next_hop, route.metric)
 
     table_str = ["", "", "", "", "", "", "", "", ""]
@@ -180,7 +180,7 @@ def test_final_graph():
     threads = []
 
     for d in daemons:
-        thread = threading.Thread(target=d.main_loop)
+        thread = threading.Thread(target=d.start)
         threads.append(thread)
         thread.start()
 
