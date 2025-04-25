@@ -13,10 +13,22 @@ Authors:
 # Package Imports
 import socket
 import sys
+import select
+import time
+import random
 
 # Local Imports
 import packet
 from packet import RIPPacket, RIPEntry
+from routing_table import RoutingTable
+from update_timer import UpdateTimer
+
+
+# Constants 
+RESPONSE_MESSAGE_INTERVAL = 30
+ROUTE_TIMOUT = 180
+GARBAGE_COLLECTION_TIME = 120
+
 
 def verify_input_ports(input_ports):
     """
@@ -46,7 +58,7 @@ def verify_input_ports(input_ports):
             print("ERROR: 1 or more Input Ports are Invalid!")
             return False
 
-    print("Input Ports are Valid!")
+    # print("Input Ports are Valid!")
     return True
 
 
@@ -71,7 +83,7 @@ def verify_output_ports(input_ports, output_ports):
         valid = verify_port_number(port)
 
         # Check metric validity
-        if not 1 <= metric <= 15:
+        if not 1 <= metric <= 500:
             valid = False
 
         # Check if port is a duplicate
@@ -89,7 +101,7 @@ def verify_output_ports(input_ports, output_ports):
             print("ERROR: 1 or more Output Ports are Invalid!")
             return False
 
-    print("Output Ports are Valid!")
+    # print("Output Ports are Valid!")
     return True
 
 
@@ -112,7 +124,7 @@ class Daemon():
     Class implementing the router daemon.
     """
 
-    def __init__ (self, id, config):
+    def __init__ (self, config):
         """
         Initialize the Daemon.
 
@@ -122,20 +134,29 @@ class Daemon():
         """
 
         # Initialise variables
-        self.id = id
+        self.id = None
         self.config = config
         self.inputs = []
         self.outputs = []
         self.socks = []
+        self.state = "start"
+        self.table = RoutingTable()
+        self.history = [] # For testing
+        self.C = {}
+        self.running = True
+
+        # Initialise timers
+        self.update_timer = None
+        self.naive_timer = None
+        self.select_timeout = None
+        self.clear_timer = None
+        self.flood_interval = 1
 
         # Call methods
         self.read_config()
-        self.print_info()
         self.bind_sockets()
 
-        # ::DEBUG:: Print socket configuration
-        for sock in self.socks:
-            print(sock)
+        self.request_packet = RIPPacket(packet.COMMAND_REQUEST, self.id)
 
     def read_config(self):
         """
@@ -147,7 +168,7 @@ class Daemon():
         except OSError:
             print ("Could not read file")
             exit()
-        
+
         # Read File
         with f:
             lines = f.readlines()
@@ -157,7 +178,7 @@ class Daemon():
             contains_output_ports = False
 
             for line in [l.split() for l in lines]:
-                if (len(line)):
+                if len(line):
                     match line[0]:
                         case b"router-id":
                             self.id = int(line[1])
@@ -172,8 +193,12 @@ class Daemon():
 
                         case b"output-ports":
                             # Convert Port Number, Metric Value and Peer-Router ID into integers
-                            port, metric, router_id = [[int(v) for v in l.decode().split("-")] for l in line[1:]]
-                            self.outputs = [port, metric, router_id]
+                            outs = [[int(v) for v in l.decode().split("-")] for l in line[1:]]
+
+                            for out in outs:
+                                self.C[out[2]] = out[1]
+
+                            self.outputs = outs
                             contains_output_ports = True
 
                             verify_output_ports(self.inputs, self.outputs)
@@ -190,8 +215,6 @@ class Daemon():
         """
 
         for i, port in enumerate(self.inputs):
-            print(f"Binding socket to port {port}")
-
             # Create each socket
             try:
                 self.socks.append(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
@@ -214,6 +237,152 @@ class Daemon():
                 print(e)
                 exit()
 
+
+    def send_packet(self, pack, dest):
+        """
+        Send message to output port
+        """
+        output = None
+        for o in self.outputs:
+            if o[2] == dest:
+                output = o
+
+        if not output:
+            return
+
+        try:
+            address = 'localhost'
+            port = output[0]
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            except Exception as e:
+                print("ERROR: Socket creation failed")
+                print(e)
+                exit()
+
+            sock.settimeout(1.0)
+            message = packet.encode_packet(pack)
+
+            address = (address, port)
+            try:
+                sock.sendto(message, address)
+
+            except Exception as e:
+                print("ERROR: Sending failed")
+                print(e)
+                exit()
+        finally:
+            if sock is not None:
+                sock.close()
+
+
+    def flood_requests(self):
+        """
+        Flood all adjacent routers with request packets
+        """
+        for output in self.outputs:
+            sock = None
+            try:
+                address = 'localhost'
+                port = output[0]
+                try:
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                except Exception as e:
+                    print("ERROR: Socket creation failed")
+                    print(e)
+                    exit()
+
+                sock.settimeout(1.0)
+                message = packet.encode_packet(self.request_packet)
+
+                address = (address, port)
+                try:
+                    sock.sendto(message, address)
+
+                except Exception as e:
+                    print("ERROR: Sending failed")
+                    print(e)
+                    exit()
+
+            except Exception as error:
+                print(f"ERROR: {error}")
+
+            finally:
+                if sock is not None:
+                    sock.close()
+
+
+    def handle_response(self, response):
+        inc_packet = packet.decode_packet(response)
+
+        if inc_packet.command == 1:
+            # If the incoming packet is a response packet, send routing table to the requesting router.
+            entries = [RIPEntry(route.destination, route.metric) for route in self.table.routes.values()]
+            response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
+            self.send_packet(response_packet, inc_packet.from_router_id)
+
+        if inc_packet.command == 2:
+            # If we recieve routing information from another router, update our database to include it. 
+            for entry in inc_packet.entries:
+                if entry.to_router_id in self.table.routes.keys():
+                    potential_metric = entry.metric + self.C[inc_packet.from_router_id]  
+                    if potential_metric < self.table.routes[entry.to_router_id].metric:
+
+                        self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
+                        self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
+                else:
+                    self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
+
+
+    # TODO Add an event system 
+    def handle_periodic_update(self):
+        pass
+
+    def start(self):
+        """
+        Router mainloop
+        """
+
+        # Don't want it to do this eventually:
+        self.table.add_route(self.id, self.id, 0)
+
+        self.select_timeout = 0.1
+        self.naive_timer = time.time()
+        self.clear_timer = time.time()
+        while self.running:
+            if time.time() - self.naive_timer > self.flood_interval:
+                # Send a request packet to all neighbours
+                self.flood_requests()
+                self.naive_timer = time.time()
+                self.flood_interval = 3 * random.randint(800, 1200) / 5000
+
+
+            # This will be removed in due time:
+            # TODO: Remove this
+            if time.time() - self.clear_timer > 5:
+                self.clear_timer = time.time()
+                self.table = RoutingTable()
+                self.table.add_route(self.id, self.id, 0)
+
+            # Handle received packets
+            readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
+            for sock in readable_sockets:
+                if sock in self.socks:
+                    try:
+                        response, _ = sock.recvfrom(1024)
+                        self.handle_response(response)
+
+                    except Exception as e:
+                        print(e)
+                        for sock in self.socks:
+                            if sock is not None:
+                                sock.close()
+
+        # Close sockets after router leaves the running state
+        for sock in self.socks:
+            if sock is not None:
+                sock.close()
+
     def __str__(self):
         return f"ID: {self.id}"
 
@@ -230,21 +399,5 @@ class Daemon():
 
 # Run the program
 if __name__ == "__main__":
-    packet_id = sys.argv[1]
-    config = sys.argv[2]
-    daemon = Daemon(id, config)
-
-    ents = [
-        RIPEntry(2, 3),
-        RIPEntry(3, 6),
-        RIPEntry(5, 5),
-        RIPEntry(1, 2),
-    ]
-
-    a_packet = RIPPacket(packet.COMMAND_RESPONSE, 2, ents)
-
-    encoded_packet = packet.encode_packet(a_packet)
-    decoded_packet = packet.decode_packet(encoded_packet)
-
-    print(a_packet)
-    print(decoded_packet)
+    config_name = sys.argv[1]
+    daemon = Daemon(config_name)
