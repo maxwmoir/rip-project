@@ -30,8 +30,6 @@ ROUTE_TIMOUT = 180
 GARBAGE_COLLECTION_TIME = 120
 
 
-
-
 def verify_input_ports(input_ports):
     """
     Helper method to check validity of the input port numbers.
@@ -244,7 +242,6 @@ class Daemon():
         """
         Send message to output port
         """
-
         output = None
         for o in self.outputs:
             if o[2] == dest:
@@ -315,6 +312,32 @@ class Daemon():
                     sock.close()
 
 
+    def handle_response(self, response):
+        inc_packet = packet.decode_packet(response)
+
+        if inc_packet.command == 1:
+            # If the incoming packet is a response packet, send routing table to the requesting router.
+            entries = [RIPEntry(route.destination, route.metric) for route in self.table.routes.values()]
+            response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
+            self.send_packet(response_packet, inc_packet.from_router_id)
+
+        if inc_packet.command == 2:
+            # If we recieve routing information from another router, update our database to include it. 
+            for entry in inc_packet.entries:
+                if entry.to_router_id in self.table.routes.keys():
+                    potential_metric = entry.metric + self.C[inc_packet.from_router_id]  
+                    if potential_metric < self.table.routes[entry.to_router_id].metric:
+
+                        self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
+                        self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
+                else:
+                    self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
+
+
+    # TODO Add an event system 
+    def handle_periodic_update(self):
+        pass
+
     def start(self):
         """
         Router mainloop
@@ -333,6 +356,9 @@ class Daemon():
                 self.naive_timer = time.time()
                 self.flood_interval = 3 * random.randint(800, 1200) / 5000
 
+
+            # This will be removed in due time:
+            # TODO: Remove this
             if time.time() - self.clear_timer > 5:
                 self.clear_timer = time.time()
                 self.table = RoutingTable()
@@ -343,30 +369,8 @@ class Daemon():
             for sock in readable_sockets:
                 if sock in self.socks:
                     try:
-                        message, _ = sock.recvfrom(1024)
-                        inc_packet = packet.decode_packet(message)
-
-                        if inc_packet.command == 1:
-                            # Send responses
-                            entries = [RIPEntry(route.destination, route.metric) for route in self.table.routes.values()]
-                            response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
-                            self.send_packet(response_packet, inc_packet.from_router_id)
-
-                        if inc_packet.command == 2:
-                            # Compute table 
-
-                            for entry in inc_packet.entries:
-                                if entry.to_router_id in self.table.routes.keys():
-                                    potential_metric = entry.metric + self.C[inc_packet.from_router_id]  
-                                    if potential_metric < self.table.routes[entry.to_router_id].metric:
-
-                                        self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
-                                        self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
-                                else:
-                                    self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
-
-                        if inc_packet.command == 3:
-                            sys.exit()
+                        response, _ = sock.recvfrom(1024)
+                        self.handle_response(response)
 
                     except Exception as e:
                         print(e)
@@ -374,6 +378,10 @@ class Daemon():
                             if sock is not None:
                                 sock.close()
 
+        # Close sockets after router leaves the running state
+        for sock in self.socks:
+            if sock is not None:
+                sock.close()
 
     def __str__(self):
         return f"ID: {self.id}"

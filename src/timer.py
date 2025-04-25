@@ -10,8 +10,11 @@ Authors:
 - Max Moir
 """
 
+import time
 
-
+class State():
+    RUNNING = "RUNNING"
+    PAUSED  = "PAUSED"
 
 
 class Timer():
@@ -22,6 +25,13 @@ class Timer():
     """
 
     def __init__(self):
-        pass
+        self.state = State.PAUSED
+        self.start_time = 0.0
+        self.creation_time = time.time()
+        self.period = None
+
+    def start(self):
+        self.state = State.RUNNING
+        self.time = time.time()
 
 
