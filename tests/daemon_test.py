@@ -35,115 +35,14 @@ def test_creation(daemon):
 
     for sock in daemon.socks:
         assert isinstance(sock, socket.socket)
+    
 
-def test_routing_loop():
-    '''
-    Routing loop test from page 29 from the routing booklet
+# TODO Write tests for bad cases:
 
-        4   B    1
-         //   \\
-        A   -  C
-           50
-
-            |
-            V
-
-       100  B    1
-         //   \\
-        A   -  C
-           50
-
-    '''
-    print()
-
-    d0 = Daemon('./tests/cfgs/graph2/loopA.txt')
-    d1 = Daemon('./tests/cfgs/graph2/loopB.txt')
-    d2 = Daemon('./tests/cfgs/graph2/loopC.txt')
-    daemons = [d0, d1, d2]
-
-    for d in daemons:
-        for sock in d.socks:
-            assert isinstance(sock, socket.socket)
-            assert len(d.inputs) == len(d.outputs)
-
-    threads = []
-
-    print()
-    for d in daemons:
-        thread = threading.Thread(target=d.main_loop)
-        threads.append(thread)
-        thread.start()
-
-    time.sleep(5)
-    print()
-    for i, d in enumerate(daemons):
-        print()
-        print("Node", chr(ord('A') + i))
-        d.table.print_table()
-
-def test_connection():
-    '''
-    Test Connection
-    '''
-    print("HERE")
-
-    d0 = Daemon('./tests/cfgs/graph1/cfg0.txt')
-    d1 = Daemon('./tests/cfgs/graph1/cfg1.txt')
-    d2 = Daemon('./tests/cfgs/graph1/cfg2.txt')
-    d3 = Daemon('./tests/cfgs/graph1/cfg3.txt')
-    daemons = [d0, d1, d2, d3]
-
-    for d in daemons:
-        for sock in d.socks:
-            assert isinstance(sock, socket.socket)
-            assert len(d.inputs) == len(d.outputs)
-
-    threads = []
-
-    print()
-    for d in daemons:
-        thread = threading.Thread(target=d.main_loop)
-        threads.append(thread)
-        thread.start()
-
-    while True:
-        time.sleep(4)
-        print()
-        for d in daemons:
-            d.table.print_table()
-
-    # return
-    # ents = [
-    #     RIPEntry(2, 3),
-    #     RIPEntry(3, 6),
-    #     RIPEntry(5, 5),
-    #     RIPEntry(1, 2),
-    # ]
-
-    # a_packet = RIPPacket(packet.COMMAND_RESPONSE, 2, ents)
-
-    # encoded_packet = packet.encode_packet(a_packet)
-
-
-    # t1 = threading.Thread(target=d1.main_loop)
-    # t2 = threading.Thread(target=d2.main_loop)
-    # t1.start()
-    # t2.start()
-
-    # for i in range(3):
-    #     time.sleep(2)
-    #     d2.send_packet(encoded_packet)
-
-    # time.sleep(3)
-
-    # d2.send_packet(packet.encode_packet(RIPPacket(3, 2, [])))
-
-    # time.sleep(1)
-
-    # assert len(d1.history) == 4
-    # assert len(d2.history) == 0
-
-def print_router_graph(daemons):
+def print_system_graph(daemons):
+    """ 
+    Helper function to graph the routing tables of each router in a list, print it out, and return it.
+    """
     graph = [[(-1, -1) for x in range(7)] for x in range(7)]
     for i, d in enumerate(daemons):
         for route in d.table.routes.values():
@@ -194,8 +93,9 @@ def test_final_graph():
 
     time.sleep(5)
 
-    graph = print_router_graph(daemons)    
-
+    print()
+    graph = print_system_graph(daemons)    
+    print("Table correct:", graph in correct_answers)
     assert graph in correct_answers
     
     print("\nKilling node 4\n")
@@ -203,15 +103,16 @@ def test_final_graph():
     daemons[3].table = RoutingTable()
 
     time.sleep(10)
-    graph = print_router_graph(daemons)
+    graph = print_system_graph(daemons)
 
     correct_no_4 = [[(1, 0), (2, 1), (2, 4), (-1, -1), (6, 6), (6, 5), (7, 8)], [(1, 1), (2, 0), (3, 3), (-1, -1), (1, 7), (1, 6), (1, 9)], [(2, 4), (2, 3), (3, 0), (-1, -1), (2, 10), (2, 9), (2, 12)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(6, 6), (6, 7), (6, 10), (-1, -1), (5, 0), (6, 1), (6, 14)], [(1, 5), (1, 6), (1, 9), (-1, -1), (5, 1), (6, 0), (1, 13)], [(1, 8), (1, 9), (1, 12), (-1, -1), (1, 14), (1, 13), (7, 0)]] 
 
+    correct = True 
     for r, row in enumerate(correct_no_4):
         for c, col in enumerate(row):
             if graph[r][c] != col:
-                print(r + 1, c + 1)
-            
+                correct = False
+    print("Table correct:", correct)
         
     print("\nRestarting node 4\n")
     daemons[3].running = True
@@ -221,6 +122,6 @@ def test_final_graph():
     
     time.sleep(10)
 
-    graph = print_router_graph(daemons)
+    graph = print_system_graph(daemons)
+    print("Table correct:", graph in correct_answers)
     assert(graph in correct_answers)
-    print(graph in correct_answers)

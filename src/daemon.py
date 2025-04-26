@@ -21,13 +21,25 @@ import random
 import packet
 from packet import RIPPacket, RIPEntry
 from routing_table import RoutingTable
-from update_timer import UpdateTimer
-
+from timer import Timer
 
 # Constants 
+NETWORK_ADDRESS = 'localhost'
 RESPONSE_MESSAGE_INTERVAL = 30
+RESPONSE_MESSAGE_RANGE = 5
 ROUTE_TIMOUT = 180
 GARBAGE_COLLECTION_TIME = 120
+CLEAR_TIMER_INTERVAL = 200
+TIMER_DIVISOR = 1000
+
+# Potential states for routing daemon
+class State():
+    INIT = "INITIALISING"
+    LISTENING = "LISTENING"
+    PROCESSING_MESSAGE = "PROCESSING_MESSAGE"
+    FLOODING = "FLOODING_NEIGHBOURS"
+    UPDATING = "UPDATING_TABLE`"
+    SHUT_DOWN = "SHUT_DOWN"
 
 
 def verify_input_ports(input_ports):
@@ -139,23 +151,25 @@ class Daemon():
         self.inputs = []
         self.outputs = []
         self.socks = []
-        self.state = "start"
+        self.state = State.INIT
         self.table = RoutingTable()
         self.history = [] # For testing
         self.C = {}
         self.running = True
 
         # Initialise timers
+        self.flood_timer = Timer()
+        self.flood_interval = RESPONSE_MESSAGE_INTERVAL / TIMER_DIVISOR
+
+        # TODO REmove these 
         self.update_timer = None
         self.naive_timer = None
         self.select_timeout = None
         self.clear_timer = None
-        self.flood_interval = 1
 
         # Call methods
         self.read_config()
         self.bind_sockets()
-
         self.request_packet = RIPPacket(packet.COMMAND_REQUEST, self.id)
 
     def read_config(self):
@@ -228,7 +242,7 @@ class Daemon():
 
             # Bind each socket
             try:
-                self.socks[i].bind(("localhost", port))
+                self.socks[i].bind((NETWORK_ADDRESS, port))
             except Exception as e:
                 for sock in self.socks:
                     if sock is not None:
@@ -251,7 +265,7 @@ class Daemon():
             return
 
         try:
-            address = 'localhost'
+            address = NETWORK_ADDRESS 
             port = output[0]
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -283,7 +297,7 @@ class Daemon():
         for output in self.outputs:
             sock = None
             try:
-                address = 'localhost'
+                address =   NETWORK_ADDRESS 
                 port = output[0]
                 try:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -294,7 +308,6 @@ class Daemon():
 
                 sock.settimeout(1.0)
                 message = packet.encode_packet(self.request_packet)
-
                 address = (address, port)
                 try:
                     sock.sendto(message, address)
@@ -329,25 +342,35 @@ class Daemon():
                 else:
                     entries.append(RIPEntry(route.destination, route.metric))
 
+            # Send routing table to adjacent router
             response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
             self.send_packet(response_packet, inc_packet.from_router_id)
 
         if inc_packet.command == 2:
             # If we recieve routing information from another router, update our database to include it. 
             for entry in inc_packet.entries:
+
                 if entry.to_router_id in self.table.routes.keys():
+                    # Handle route already in table
+
                     potential_metric = entry.metric + self.C[inc_packet.from_router_id]  
                     if potential_metric < self.table.routes[entry.to_router_id].metric:
-
+                        # Replace current route with better metric
                         self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
                         self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
                 else:
+                    # Add new route to table 
                     self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
 
-
-    # TODO Add an event system 
     def handle_periodic_update(self):
-        pass
+        self.flood_requests()
+        self.flood_timer.reset()
+        self.flood_interval = random.randint(RESPONSE_MESSAGE_INTERVAL - RESPONSE_MESSAGE_RANGE, RESPONSE_MESSAGE_INTERVAL + RESPONSE_MESSAGE_RANGE) / TIMER_DIVISOR
+
+    def update_table(self):
+        self.clear_timer = time.time()
+        self.table = RoutingTable()
+        self.table.add_route(self.id, self.id, 0)
 
     def start(self):
         """
@@ -359,21 +382,19 @@ class Daemon():
 
         self.select_timeout = 0.1
         self.naive_timer = time.time()
-        self.clear_timer = time.time()
-        while self.running:
-            if time.time() - self.naive_timer > self.flood_interval:
-                # Send a request packet to all neighbours
-                self.flood_requests()
-                self.naive_timer = time.time()
-                self.flood_interval = 3 * random.randint(800, 1200) / 5000
+        self.clear_timer = time.time()        
+        self.state = State.LISTENING
+        
+        while self.state is State.LISTENING:
+            # if time.time() - self.naive_timer > self.flood_interval:
 
+            if self.flood_timer.get_uptime() > self.flood_interval:
+                self.handle_periodic_update()
 
             # This will be removed in due time:
             # TODO: Remove this
-            if time.time() - self.clear_timer > 5:
-                self.clear_timer = time.time()
-                self.table = RoutingTable()
-                self.table.add_route(self.id, self.id, 0)
+            if time.time() - self.clear_timer > CLEAR_TIMER_INTERVAL / TIMER_DIVISOR:
+                self.update_table()
 
             # Handle received packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
