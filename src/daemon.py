@@ -313,11 +313,22 @@ class Daemon():
 
 
     def handle_response(self, response):
+        """
+        Function to handle response event
+        """
         inc_packet = packet.decode_packet(response)
 
         if inc_packet.command == 1:
             # If the incoming packet is a response packet, send routing table to the requesting router.
-            entries = [RIPEntry(route.destination, route.metric) for route in self.table.routes.values()]
+            entries = []
+
+            # Split horizon with poisoned reverse
+            for route in self.table.routes.values():
+                if route.next_hop == inc_packet.from_router_id:
+                    entries.append(RIPEntry(route.destination, 16))
+                else:
+                    entries.append(RIPEntry(route.destination, route.metric))
+
             response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
             self.send_packet(response_packet, inc_packet.from_router_id)
 
@@ -366,6 +377,7 @@ class Daemon():
 
             # Handle received packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
+            
             for sock in readable_sockets:
                 if sock in self.socks:
                     try:
@@ -378,10 +390,6 @@ class Daemon():
                             if sock is not None:
                                 sock.close()
 
-        # Close sockets after router leaves the running state
-        for sock in self.socks:
-            if sock is not None:
-                sock.close()
 
     def __str__(self):
         return f"ID: {self.id}"

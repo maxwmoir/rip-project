@@ -203,11 +203,24 @@ def test_final_graph():
     daemons[3].table = RoutingTable()
 
     time.sleep(10)
-
     graph = print_router_graph(daemons)
+
     correct_no_4 = [[(1, 0), (2, 1), (2, 4), (-1, -1), (6, 6), (6, 5), (7, 8)], [(1, 1), (2, 0), (3, 3), (-1, -1), (1, 7), (1, 6), (1, 9)], [(2, 4), (2, 3), (3, 0), (-1, -1), (2, 10), (2, 9), (2, 12)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(6, 6), (6, 7), (6, 10), (-1, -1), (5, 0), (6, 1), (6, 14)], [(1, 5), (1, 6), (1, 9), (-1, -1), (5, 1), (6, 0), (1, 13)], [(1, 8), (1, 9), (1, 12), (-1, -1), (1, 14), (1, 13), (7, 0)]] 
 
     for r, row in enumerate(correct_no_4):
         for c, col in enumerate(row):
             if graph[r][c] != col:
                 print(r + 1, c + 1)
+            
+        
+    print("\nRestarting node 4\n")
+    daemons[3].running = True
+    thread = threading.Thread(target=daemons[3].start)
+    threads.append(thread)
+    thread.start()
+    
+    time.sleep(10)
+
+    graph = print_router_graph(daemons)
+    assert(graph in correct_answers)
+    print(graph in correct_answers)
