@@ -27,10 +27,10 @@ from timer import Timer
 NETWORK_ADDRESS = 'localhost'
 RESPONSE_MESSAGE_INTERVAL = 30
 RESPONSE_MESSAGE_RANGE = 5
-ROUTE_TIMOUT = 180
+ROUTE_TIMEOUT = 180
 GARBAGE_COLLECTION_TIME = 120
 CLEAR_TIMER_INTERVAL = 200
-TIMER_DIVISOR = 1000
+TIMER_DIVISOR = 15
 
 # Potential states for routing daemon
 class State():
@@ -161,7 +161,10 @@ class Daemon():
         self.flood_timer = Timer()
         self.flood_interval = RESPONSE_MESSAGE_INTERVAL / TIMER_DIVISOR
 
+
         # TODO REmove these 
+        self.timeout_length = ROUTE_TIMEOUT / TIMER_DIVISOR
+        self.garbage_length = GARBAGE_COLLECTION_TIME / TIMER_DIVISOR
         self.update_timer = None
         self.naive_timer = None
         self.select_timeout = None
@@ -250,6 +253,7 @@ class Daemon():
                 print("ERROR: Socket binding failed")
                 print(e)
                 exit()
+
 
 
     def send_packet(self, pack, dest):
@@ -358,9 +362,15 @@ class Daemon():
                         # Replace current route with better metric
                         self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
                         self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
+
+
+                        self.table.routes[entry.to_router_id].timeout_timer = time.time()
+                        self.table.routes[entry.to_router_id].garbage_timer = 0.0
                 else:
                     # Add new route to table 
                     self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
+
+                
 
     def handle_periodic_update(self):
         self.flood_requests()
@@ -368,9 +378,29 @@ class Daemon():
         self.flood_interval = random.randint(RESPONSE_MESSAGE_INTERVAL - RESPONSE_MESSAGE_RANGE, RESPONSE_MESSAGE_INTERVAL + RESPONSE_MESSAGE_RANGE) / TIMER_DIVISOR
 
     def update_table(self):
-        self.clear_timer = time.time()
-        self.table = RoutingTable()
-        self.table.add_route(self.id, self.id, 0)
+        to_delete = []
+        for destination, route in self.table.routes.items():
+            cur_time = time.time()
+
+            if route.destination != self.id:
+                # Check if timeout has occurred and mark as unreachable
+                if cur_time - route.timeout_timer >= self.timeout_length and route.garbage_timer == 0.0:
+                    route.metric = 16
+                    print(f"Route to {route.destination} timed out. Marking as unreachable.")
+
+                # Start garbage collection
+                if route.metric == 16 and not route.garbage_timer:
+                    route.garbage_timer = time.time()
+                    
+                # Garbage collection time exceeded, mark for deletion
+                if route.garbage_timer and cur_time - route.garbage_timer >= self.garbage_length:
+                    to_delete.append(destination)
+
+        # Now actually delete the routes
+        for destination in to_delete:
+            print(f"Deleting route to {destination} after garbage collection.")
+            del self.table.routes[destination]
+
 
     def start(self):
         """
@@ -386,15 +416,10 @@ class Daemon():
         self.state = State.LISTENING
         
         while self.state is State.LISTENING:
-            # if time.time() - self.naive_timer > self.flood_interval:
+            self.update_table()
 
             if self.flood_timer.get_uptime() > self.flood_interval:
                 self.handle_periodic_update()
-
-            # This will be removed in due time:
-            # TODO: Remove this
-            if time.time() - self.clear_timer > CLEAR_TIMER_INTERVAL / TIMER_DIVISOR:
-                self.update_table()
 
             # Handle received packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
@@ -410,6 +435,7 @@ class Daemon():
                         for sock in self.socks:
                             if sock is not None:
                                 sock.close()
+
 
 
     def __str__(self):

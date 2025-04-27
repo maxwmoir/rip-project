@@ -28,6 +28,7 @@ class RoutingEntry():
         self.destination = destination
         self.next_hop = next_hop
         self.metric = metric
+
         self.age = 0.0
         self.timeout_timer = 0.0 
         self.garbage_timer = 0.0

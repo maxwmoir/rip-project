@@ -11,6 +11,7 @@ Authors:
 """
 
 import routing_entry
+import time
 
 class RoutingTable():
     """
@@ -35,41 +36,11 @@ class RoutingTable():
         """
 
         route = routing_entry.RoutingEntry(destination, next_hop, metric)
+        route.timeout_timer = time.time()
         if destination not in self.routes.keys():
             self.routes[destination] = route
+            
         
-    def update_timers(self, age):
-        """
-        Update the age, timeout, and garbage timers of each routing entry.
-        Delete entries after their garbage timers time out.
-        """
-
-        to_delete = []
-
-        for destination, route in self.routes.items():
-            route.age += age
-            route.timeout_timer += age
-
-            # Check if timeout has occurred and mark as unreachable
-            if route.timeout_timer >= 180 and route.garbage_timer == 0.0:
-                route.metric = 16
-                route.garbage_timer = 0.0
-                print(f"Route to {route.destination} timed out. Marking as unreachable.")
-
-            # Start garbage collection
-            if route.metric == 16:
-                route.garbage_timer += age
-                
-                # Garbage collection time exceeded, mark for deletion
-                if route.garbage_timer >= 120:
-                    to_delete.append(destination)
-
-        # Now actually delete the routes
-        for destination in to_delete:
-            print(f"Deleting route to {destination} after garbage collection.")
-            del self.routes[destination]
-
-
 
     def print_table(self):
         """
