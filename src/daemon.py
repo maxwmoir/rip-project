@@ -279,6 +279,8 @@ class Daemon():
                 exit()
 
             sock.settimeout(1.0)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
             message = packet.encode_packet(pack)
 
             address = (address, port)
@@ -387,7 +389,7 @@ class Daemon():
                 # Check if timeout has occurred and mark as unreachable
                 if cur_time - route.timeout_timer >= self.timeout_length and route.garbage_timer == 0.0:
                     route.metric = 16
-                    # print(f"Route to {route.destination} timed out. Marking as unreachable.")
+                    # print(f"R{self.id} - Route to R{route.destination} timed out. Marking as unreachable.")
 
                 # Start garbage collection
                 if route.metric == 16 and not route.garbage_timer:
@@ -399,7 +401,7 @@ class Daemon():
 
         # Now actually delete the routes
         for destination in to_delete:
-            print(f"Deleting route to {destination} after garbage collection.")
+            print(f"R{self.id} - Deleting route to R{destination} after garbage collection.")
             del self.table.routes[destination]
 
 

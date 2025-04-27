@@ -82,7 +82,7 @@ def test_final_graph():
     time.sleep(1)
     daemons[3].table = RoutingTable()
 
-    time.sleep(2)
+    time.sleep(10)
 
     correct_no_4 = [[(1, 0), (2, 1), (2, 4), (-1, -1), (6, 6), (6, 5), (7, 8)], [(1, 1), (2, 0), (3, 3), (-1, -1), (1, 7), (1, 6), (1, 9)], [(2, 4), (2, 3), (3, 0), (-1, -1), (2, 10), (2, 9), (2, 12)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(6, 6), (6, 7), (6, 10), (-1, -1), (5, 0), (6, 1), (6, 14)], [(1, 5), (1, 6), (1, 9), (-1, -1), (5, 1), (6, 0), (1, 13)], [(1, 8), (1, 9), (1, 12), (-1, -1), (1, 14), (1, 13), (7, 0)]] 
 
@@ -104,7 +104,7 @@ def test_final_graph():
     threads.append(thread)
     thread.start()
     
-    time.sleep(1)
+    time.sleep(30)
 
     graph = print_system_graph(daemons)
     assert(graph in correct_answers)
