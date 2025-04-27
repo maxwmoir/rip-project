@@ -103,9 +103,7 @@ def test_final_graph():
     time.sleep(1)
     daemons[3].table = RoutingTable()
 
-    for i in range(200):
-        print_system_graph(daemons)
-        time.sleep(1)
+    time.sleep(10)
 
     graph = print_system_graph(daemons)
 

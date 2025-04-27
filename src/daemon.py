@@ -30,7 +30,7 @@ RESPONSE_MESSAGE_RANGE = 5
 ROUTE_TIMEOUT = 180
 GARBAGE_COLLECTION_TIME = 120
 CLEAR_TIMER_INTERVAL = 200
-TIMER_DIVISOR = 15
+TIMER_DIVISOR = 100
 
 # Potential states for routing daemon
 class State():
@@ -363,13 +363,16 @@ class Daemon():
                         self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
                         self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
 
-                        # Reset timeout timer if update made.
+                    if potential_metric == self.table.routes[entry.to_router_id].metric:
                         self.table.routes[entry.to_router_id].timeout_timer = time.time()
                         self.table.routes[entry.to_router_id].garbage_timer = 0.0
+
                 else:
                     # Add new route to table 
-                    self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
-
+                    if entry.metric + self.C[inc_packet.from_router_id] > 16:
+                        self.table.add_route(entry.to_router_id, inc_packet.from_router_id, 16)
+                    else:
+                        self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
                 
 
     def handle_periodic_update(self):
@@ -380,13 +383,13 @@ class Daemon():
     def update_table(self):
         to_delete = []
         for destination, route in self.table.routes.items():
-            cur_time = time.time()
 
             if route.destination != self.id:
+                cur_time = time.time()
                 # Check if timeout has occurred and mark as unreachable
                 if cur_time - route.timeout_timer >= self.timeout_length and route.garbage_timer == 0.0:
                     route.metric = 16
-                    print(f"Route to {route.destination} timed out. Marking as unreachable.")
+                    # print(f"Route to {route.destination} timed out. Marking as unreachable.")
 
                 # Start garbage collection
                 if route.metric == 16 and not route.garbage_timer:
