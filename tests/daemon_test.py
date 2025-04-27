@@ -97,13 +97,12 @@ def test_final_graph():
     graph = print_system_graph(daemons)    
     print("Table correct:", graph in correct_answers)
     # assert graph in correct_answers
-    
     print("\nKilling node 4\n")
     daemons[3].state = "shutdown"
     time.sleep(1)
     daemons[3].table = RoutingTable()
 
-    time.sleep(10)
+    time.sleep(12)
 
     graph = print_system_graph(daemons)
 

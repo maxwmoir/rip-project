@@ -369,9 +369,7 @@ class Daemon():
 
                 else:
                     # Add new route to table 
-                    if entry.metric + self.C[inc_packet.from_router_id] > 16:
-                        self.table.add_route(entry.to_router_id, inc_packet.from_router_id, 16)
-                    else:
+                    if entry.metric + self.C[inc_packet.from_router_id] <= 16:
                         self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
                 
 
