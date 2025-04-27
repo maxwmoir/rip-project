@@ -91,38 +91,42 @@ def test_final_graph():
     ]
 
 
-    time.sleep(5)
-
+    time.sleep(1)
     print()
     graph = print_system_graph(daemons)    
     print("Table correct:", graph in correct_answers)
-    # assert graph in correct_answers
+    assert graph in correct_answers
+
+
     print("\nKilling node 4\n")
     daemons[3].state = "shutdown"
     time.sleep(1)
     daemons[3].table = RoutingTable()
 
-    time.sleep(12)
-
-    graph = print_system_graph(daemons)
+    time.sleep(2)
 
     correct_no_4 = [[(1, 0), (2, 1), (2, 4), (-1, -1), (6, 6), (6, 5), (7, 8)], [(1, 1), (2, 0), (3, 3), (-1, -1), (1, 7), (1, 6), (1, 9)], [(2, 4), (2, 3), (3, 0), (-1, -1), (2, 10), (2, 9), (2, 12)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(6, 6), (6, 7), (6, 10), (-1, -1), (5, 0), (6, 1), (6, 14)], [(1, 5), (1, 6), (1, 9), (-1, -1), (5, 1), (6, 0), (1, 13)], [(1, 8), (1, 9), (1, 12), (-1, -1), (1, 14), (1, 13), (7, 0)]] 
+
+    graph = print_system_graph(daemons)
 
     correct = True 
     for r, row in enumerate(correct_no_4):
         for c, col in enumerate(row):
             if graph[r][c] != col:
+                print(r, c)
                 correct = False
+    assert correct  
     print("Table correct:", correct)
-        
+
+
     print("\nRestarting node 4\n")
     daemons[3].running = True
     thread = threading.Thread(target=daemons[3].start)
     threads.append(thread)
     thread.start()
     
-    time.sleep(10)
+    time.sleep(1)
 
     graph = print_system_graph(daemons)
+    assert(graph in correct_answers)
     print("Table correct:", graph in correct_answers)
-    # assert(graph in correct_answers)
