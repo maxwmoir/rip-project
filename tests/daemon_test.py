@@ -104,7 +104,7 @@ def test_final_graph():
     threads.append(thread)
     thread.start()
     
-    time.sleep(30)
+    time.sleep(22)
 
     graph = print_system_graph(daemons)
     assert(graph in correct_answers)

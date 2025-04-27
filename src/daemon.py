@@ -29,7 +29,6 @@ RESPONSE_MESSAGE_INTERVAL = 30
 RESPONSE_MESSAGE_RANGE = 5
 ROUTE_TIMEOUT = 180
 GARBAGE_COLLECTION_TIME = 120
-CLEAR_TIMER_INTERVAL = 200
 TIMER_DIVISOR = 600
 
 # Potential states for routing daemon
@@ -38,7 +37,7 @@ class State():
     LISTENING = "LISTENING"
     PROCESSING_MESSAGE = "PROCESSING_MESSAGE"
     FLOODING = "FLOODING_NEIGHBOURS"
-    UPDATING = "UPDATING_TABLE`"
+    UPDATING = "UPDATING_TABLE"
     SHUT_DOWN = "SHUT_DOWN"
 
 
@@ -161,14 +160,10 @@ class Daemon():
         self.flood_timer = Timer()
         self.flood_interval = RESPONSE_MESSAGE_INTERVAL / TIMER_DIVISOR
 
-
-        # TODO REmove these 
+        # Timeouts 
         self.timeout_length = ROUTE_TIMEOUT / TIMER_DIVISOR
         self.garbage_length = GARBAGE_COLLECTION_TIME / TIMER_DIVISOR
-        self.update_timer = None
-        self.naive_timer = None
         self.select_timeout = None
-        self.clear_timer = None
 
         # Call methods
         self.read_config()
@@ -278,20 +273,23 @@ class Daemon():
                 print(e)
                 exit()
 
+            # Socket options
             sock.settimeout(1.0)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
             message = packet.encode_packet(pack)
 
+            # Attempt to send the packet
             address = (address, port)
             try:
                 sock.sendto(message, address)
-
             except Exception as e:
                 print("ERROR: Sending failed")
                 print(e)
                 exit()
         finally:
+            # Close the socket after the packet has been sent
+            # or if an error occurred
             if sock is not None:
                 sock.close()
 
@@ -305,6 +303,8 @@ class Daemon():
             try:
                 address =   NETWORK_ADDRESS 
                 port = output[0]
+
+                # Create a socket for sending the packet
                 try:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 except Exception as e:
@@ -312,12 +312,16 @@ class Daemon():
                     print(e)
                     exit()
 
+                # Socket options
                 sock.settimeout(1.0)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
                 message = packet.encode_packet(self.request_packet)
+
+                # Attempt to send the packet
                 address = (address, port)
                 try:
                     sock.sendto(message, address)
-
                 except Exception as e:
                     print("ERROR: Sending failed")
                     print(e)
@@ -327,6 +331,8 @@ class Daemon():
                 print(f"ERROR: {error}")
 
             finally:
+                # Close the socket after the packet has been sent
+                # or if an error occurred
                 if sock is not None:
                     sock.close()
 
@@ -356,15 +362,18 @@ class Daemon():
             # If we recieve routing information from another router, update our database to include it. 
             for entry in inc_packet.entries:
 
+                # Handle route already in table
                 if entry.to_router_id in self.table.routes.keys():
-                    # Handle route already in table
-
                     potential_metric = entry.metric + self.C[inc_packet.from_router_id]  
+                    
+                    # Replace current route with better metric
                     if potential_metric < self.table.routes[entry.to_router_id].metric:
-                        # Replace current route with better metric
                         self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
                         self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
-
+                        self.table.routes[entry.to_router_id].timeout_timer = time.time()
+                        self.table.routes[entry.to_router_id].garbage_timer = 0.0
+                    
+                    # Reset timeout if metric is the same
                     if potential_metric == self.table.routes[entry.to_router_id].metric:
                         self.table.routes[entry.to_router_id].timeout_timer = time.time()
                         self.table.routes[entry.to_router_id].garbage_timer = 0.0
@@ -413,9 +422,7 @@ class Daemon():
         # Don't want it to do this eventually:
         self.table.add_route(self.id, self.id, 0)
 
-        self.select_timeout = 0.1
-        self.naive_timer = time.time()
-        self.clear_timer = time.time()        
+        self.select_timeout = 0.1    
         self.state = State.LISTENING
         
         while self.state is State.LISTENING:
