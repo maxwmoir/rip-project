@@ -363,7 +363,7 @@ class Daemon():
                         self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
                         self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
 
-
+                        # Reset timeout timer if update made.
                         self.table.routes[entry.to_router_id].timeout_timer = time.time()
                         self.table.routes[entry.to_router_id].garbage_timer = 0.0
                 else:
