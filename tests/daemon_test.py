@@ -14,6 +14,7 @@ import socket
 import threading
 import time
 import pytest
+import sys
 from src.daemon import Daemon
 from src.routing_table import RoutingTable
 
@@ -36,9 +37,6 @@ def test_creation(daemon):
     for sock in daemon.socks:
         assert isinstance(sock, socket.socket)
     
-
-# TODO Write tests for bad cases:
-
 def print_system_graph(daemons):
     """ 
     Helper function to graph the routing tables of each router in a list, print it out, and return it.
@@ -130,3 +128,10 @@ def test_final_graph():
     graph = print_system_graph(daemons)
     assert(graph in correct_answers)
     print("Table correct:", graph in correct_answers)
+
+    for d in daemons:
+        d.state = "shut-down"
+    
+    del threads
+    del daemons
+    return 
