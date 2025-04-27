@@ -1,6 +1,6 @@
 """
 COSC364 - RIP Programming Assignment
-- routing_table.py
+- update_timer.py
 
 Created: 
 - 25/02/25
