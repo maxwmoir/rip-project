@@ -1,3 +1,15 @@
+"""
+COSC364 - RIP Programming Assignment
+- packet_test.py
+
+Created: 
+- 29/04/25
+
+Authors: 
+- Martyn Gascoigne 
+- Max Moir
+"""
+
 from src.packet import RIPPacket, RIPEntry, encode_packet, decode_packet, COMMAND_REQUEST, COMMAND_RESPONSE, VERSION
 import pytest
 
@@ -25,7 +37,7 @@ def test_large_router_id():
     """
     Test encoding and decoding with a large router ID.
     """
-    
+
     packet = RIPPacket(command=COMMAND_RESPONSE, from_router_id=65535)
     packet.add_entry(to_router_id=500, metric=10)
     encoded = encode_packet(packet)
