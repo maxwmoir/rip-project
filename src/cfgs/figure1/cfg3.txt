@@ -1,0 +1,3 @@
+router-id 3
+input-ports 6230 6430
+output-ports 6320-3-2 6340-4-4

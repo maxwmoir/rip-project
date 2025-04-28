@@ -29,6 +29,7 @@ RESPONSE_MESSAGE_INTERVAL = 30
 RESPONSE_MESSAGE_RANGE = 5
 ROUTE_TIMEOUT = 180
 GARBAGE_COLLECTION_TIME = 120
+NUMBER_OF_ROUTERS = 7
 TIMER_DIVISOR = 600
 
 # Potential states for routing daemon
@@ -423,6 +424,9 @@ class Daemon():
         self.table.add_route(self.id, self.id, 0)
 
         self.select_timeout = 0.1    
+        self.print_timer = Timer()
+        self.print_timer.start()
+
         self.state = State.LISTENING
         
         while self.state is State.LISTENING:
@@ -430,6 +434,10 @@ class Daemon():
 
             if self.flood_timer.get_uptime() > self.flood_interval:
                 self.handle_periodic_update()
+            
+            if self.print_timer.get_uptime() > 3:
+                self.print_table() 
+                self.print_timer.reset()
 
             # Handle received packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
@@ -451,6 +459,17 @@ class Daemon():
     def __str__(self):
         return f"ID: {self.id}"
 
+    def print_table(self):
+        """
+        Print routing table to console.
+        """
+        print(f"------------- Router {self.id:02} -------------")
+        print("| destination    next_hop    metric |")
+        for route in self.table.routes.values():
+            print(route)
+        print("-------------------------------------")
+        print()
+
     def print_info(self):
         """
         Print information about the daemon to the console.
@@ -466,3 +485,5 @@ class Daemon():
 if __name__ == "__main__":
     config_name = sys.argv[1]
     daemon = Daemon(config_name)
+
+    daemon.start()
