@@ -34,4 +34,4 @@ class RoutingEntry():
         self.garbage_timer = 0.0
 
     def __str__(self):
-        return f"|            {self.destination}          {self.next_hop}        {self.metric:02} |"
+        return f"|           {self.destination}           {self.next_hop}        {self.metric:02} |"

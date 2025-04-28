@@ -276,8 +276,6 @@ class Daemon():
 
             # Socket options
             sock.settimeout(1.0)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
             message = packet.encode_packet(pack)
 
             # Attempt to send the packet
@@ -315,8 +313,6 @@ class Daemon():
 
                 # Socket options
                 sock.settimeout(1.0)
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
                 message = packet.encode_packet(self.request_packet)
 
                 # Attempt to send the packet
@@ -325,7 +321,7 @@ class Daemon():
                     sock.sendto(message, address)
                 except Exception as e:
                     print("ERROR: Sending failed")
-                    print(e)
+                    print(e, address)
                     exit()
 
             except Exception as error:
@@ -463,11 +459,16 @@ class Daemon():
         """
         Print routing table to console.
         """
-        print(f"------------- Router {self.id:02} -------------")
+        print(f"+------------ Router {self.id:02} ------------+")
         print("| destination    next_hop    metric |")
-        for route in self.table.routes.values():
-            print(route)
-        print("-------------------------------------")
+
+        for i in range(NUMBER_OF_ROUTERS):
+            if i + 1 in self.table.routes.keys():
+                print(self.table.routes[i + 1])
+            else:
+                print(f"|           {i + 1}           -         - |")
+
+        print("+-----------------------------------+")
         print()
 
     def print_info(self):
@@ -487,3 +488,4 @@ if __name__ == "__main__":
     daemon = Daemon(config_name)
 
     daemon.start()
+
