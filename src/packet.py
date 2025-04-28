@@ -10,10 +10,11 @@ Authors:
 - Max Moir
 """
 
+# Constants for the RIP protocol
 COMMAND_REQUEST = 1
 COMMAND_RESPONSE = 2
 VERSION = 2
-AFI = 2 # Address Family Identifier
+AFI = 2
 
 class RIPPacket():
     """
@@ -23,6 +24,7 @@ class RIPPacket():
     def __init__(self, command, from_router_id, entries=None):
         """
         Initialise the RIP packet object.
+        Runs a simple validation check to ensure the packet is valid.
 
         Args:
             command (int): The ID of the command
@@ -30,10 +32,44 @@ class RIPPacket():
             entries (list::RIPEntry): The cost to reach the next router
         """
 
+        self.validate_initialisation(command, from_router_id, entries)
+
+        # Initialise the packet object
         self.command = command
         self.version = VERSION
         self.from_router_id = from_router_id
         self.entries = entries if entries else []
+
+    def validate_initialisation(self, command, from_router_id, entries):
+        """
+        Validate the initialisation of the RIP packet object.
+        Args:
+            command (int): The ID of the command
+            from_router_id (int): The ID of the router this packet is being sent from
+            entries (list::RIPEntry): The cost to reach the next router
+
+        Raises:
+            ValueError: If the command is not COMMAND_REQUEST(1) or COMMAND_RESPONSE(2),
+                        if the router ID is not between 0 and 65535, 
+                        if the entiries contain invalid router IDs or AFI values.
+
+        Returns:
+            bool: True if the initialisation is valid.
+        """
+
+        if command != COMMAND_REQUEST and command != COMMAND_RESPONSE:
+            raise ValueError("Invalid command type. Must be 1 (request) or 2 (response).")
+        if from_router_id < 0 or from_router_id > 65535:
+            raise ValueError("Invalid router ID. Must be between 0 and 65535.")
+        
+        if entries:
+            for entry in entries:
+                if (entry.to_router_id < 0 or entry.to_router_id > 65535):
+                    raise ValueError("Invalid router ID. Must be between 0 and 65535.")
+                if (entry.afi != AFI):
+                    raise ValueError("Invalid AFI. Must be 2 (IPv4).")
+        
+        return True
 
 
     def add_entry(self, to_router_id, metric, afi=AFI):
@@ -49,6 +85,10 @@ class RIPPacket():
         self.entries.append(RIPEntry(to_router_id, metric, afi))
 
     def __str__(self):
+        """
+        String representation of the packet object.
+        """
+
         entries = f"{''.join([f"[To-ID: {l.to_router_id}, Metric: {l.metric}, AFI: {l.afi}], " for l in self.entries])}"
         return f"Packet-Object: Command Type: {self.command}, Version: {self.version}, From-ID: {self.from_router_id}, Entries: [{entries}]"
 
@@ -56,6 +96,9 @@ class RIPPacket():
 def encode_packet(input_packet):
     """
     Construct an encoded packet represented by a byte-array.
+
+    Args:
+        input_packet (RIPPacket): The packet to encode into a byte-array
 
     Returns:
         Encoded packet
@@ -95,10 +138,13 @@ def encode_packet(input_packet):
 
 def decode_packet(encoded_packet):
     """
-    Decode a packet.
+    Decode byte-array into a RIPPacket object that is usable by the router.
+
+    Args:
+        encoded_packet (bytearray): The packet to decode
 
     Returns:
-        Encoded packet
+        Decoded packet
     """
 
     header_size = 4

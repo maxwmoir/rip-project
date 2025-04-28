@@ -13,8 +13,6 @@ Authors:
 import socket
 import threading
 import time
-import pytest
-import sys
 from src.daemon import Daemon
 from src.routing_table import RoutingTable
 
