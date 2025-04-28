@@ -13,3 +13,10 @@ The program is designed to converge upon an ideal network state from a given con
 ## How to run
 The program is run from the command line by supplying the name of the config file.
 
+## Todo
+- Make sure all methods have docstring
+- Fix Operation not permitted error with sock.send
+- Remove unnecessary prints and commenting
+- Reorder methods
+- Remove use of magic nos.
+- etc.
