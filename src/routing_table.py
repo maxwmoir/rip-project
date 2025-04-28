@@ -22,6 +22,7 @@ class RoutingTable():
         """
         Initialize the Routing Table
         """
+
         self.routes = {}
 
     def add_route(self, destination, next_hop, metric):
@@ -37,15 +38,6 @@ class RoutingTable():
 
         route = routing_entry.RoutingEntry(destination, next_hop, metric)
         route.timeout_timer = time.time()
+
         if destination not in self.routes.keys():
             self.routes[destination] = route
-            
-        
-
-    def print_table(self):
-        """
-        Prints out the routing table infomation
-        """
-        print("dest next num_hops")
-        for route in self.routes.values():
-            print(f"{route.destination}    {route.next_hop}    {route.metric}")

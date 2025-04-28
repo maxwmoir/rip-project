@@ -130,7 +130,6 @@ def verify_port_number(port_number):
 
     return 1024 <= port_number <= 64000
 
-
 class Daemon():
     """
     Class implementing the router daemon.
@@ -173,7 +172,7 @@ class Daemon():
 
     def read_config(self):
         """
-        Read the stored config file.
+        Read the configuration file and set up the router.
         """
 
         try:
@@ -254,8 +253,13 @@ class Daemon():
 
     def send_packet(self, pack, dest):
         """
-        Send message to output port
+        Send a packet to the specified destination.
+
+        Args:
+            pack (RIPPacket): The packet to send
+            dest (int): The destination router ID
         """
+
         output = None
         for o in self.outputs:
             if o[2] == dest:
@@ -314,11 +318,15 @@ class Daemon():
 
     def handle_response(self, response):
         """
-        Function to handle response event
+        Handle incoming packets from the socket.
+
+        Args:
+            response (bytearray): The packet received from the socket
         """
+
         inc_packet = packet.decode_packet(response)
 
-        if inc_packet.command == 2:
+        if inc_packet.command == packet.COMMAND_RESPONSE:
             # If we recieve routing information from another router, update our database to include it. 
             for entry in inc_packet.entries:
 
@@ -345,6 +353,10 @@ class Daemon():
                         self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
 
     def update_table(self):
+        """
+        Update the routing table by checking for timeouts and garbage collection.
+        """
+
         to_delete = []
         for destination, route in self.table.routes.items():
 
@@ -373,6 +385,7 @@ class Daemon():
         """
         After a route has been updated, recompute table and flood adjacent routers with update.
         """
+
         self.update_table()
         self.flood_table()
 
@@ -380,6 +393,7 @@ class Daemon():
         """
         Periodically flood all adjacent routers with routing table.
         """ 
+
         self.flood_table()
         self.flood_timer.reset()
         self.flood_interval = random.randint(RESPONSE_MESSAGE_INTERVAL - RESPONSE_MESSAGE_RANGE, RESPONSE_MESSAGE_INTERVAL + RESPONSE_MESSAGE_RANGE) / TIMER_DIVISOR
@@ -388,12 +402,13 @@ class Daemon():
         """
         Print the router table and reset the print table timer.
         """ 
+
         self.print_table() 
         self.print_timer.reset()
 
     def start(self):
         """
-        Router mainloop
+        Start the routing daemon and begin listening for incoming packets.
         """
 
         # Don't want it to do this eventually:
@@ -430,12 +445,17 @@ class Daemon():
 
 
     def __str__(self):
+        """
+        String representation of the Daemon object.
+        """
+
         return f"ID: {self.id}"
 
     def print_table(self):
         """
         Print routing table to console.
         """
+
         print(f"+------------ Router {self.id:02} ------------+")
         print("| destination    next_hop    metric |")
 
@@ -465,4 +485,3 @@ if __name__ == "__main__":
     daemon = Daemon(config_name)
 
     daemon.start()
-
