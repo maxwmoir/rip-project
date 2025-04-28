@@ -17,6 +17,7 @@ def test_empty_packet_encoding():
     """
     Test encoding and decoding of an empty RIPPacket (no entries).
     """
+    
     packet = RIPPacket(command=COMMAND_REQUEST, from_router_id=123)
     encoded = encode_packet(packet)
     decoded = decode_packet(encoded)
@@ -30,6 +31,7 @@ def test_invalid_command():
     """
     Test that an invalid command raises an error or behaves as expected.
     """
+
     with pytest.raises(ValueError):
         RIPPacket(command=99, from_router_id=123)  # Assuming command 99 is invalid
 
