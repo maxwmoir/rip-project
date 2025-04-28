@@ -291,47 +291,25 @@ class Daemon():
             # or if an error occurred
             if sock is not None:
                 sock.close()
-
-
-    def flood_requests(self):
+    
+    def flood_table(self):
         """
-        Flood all adjacent routers with request packets
+        Flood all adjacent routers with routing table
         """
+
         for output in self.outputs:
-            sock = None
-            try:
-                address =   NETWORK_ADDRESS 
-                port = output[0]
+            entries = []
 
-                # Create a socket for sending the packet
-                try:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                except Exception as e:
-                    print("ERROR: Socket creation failed")
-                    print(e)
-                    exit()
+            # Split horizon with poisoned reverse
+            for route in self.table.routes.values():
+                if route.next_hop == output[2]:
+                    entries.append(RIPEntry(route.destination, 16))
+                else:
+                    entries.append(RIPEntry(route.destination, route.metric))
 
-                # Socket options
-                sock.settimeout(1.0)
-                message = packet.encode_packet(self.request_packet)
-
-                # Attempt to send the packet
-                address = (address, port)
-                try:
-                    sock.sendto(message, address)
-                except Exception as e:
-                    print("ERROR: Sending failed")
-                    print(e, address)
-                    exit()
-
-            except Exception as error:
-                print(f"ERROR: {error}")
-
-            finally:
-                # Close the socket after the packet has been sent
-                # or if an error occurred
-                if sock is not None:
-                    sock.close()
+            # Send routing table to adjacent router
+            response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
+            self.send_packet(response_packet, output[2])
 
 
     def handle_response(self, response):
@@ -339,21 +317,6 @@ class Daemon():
         Function to handle response event
         """
         inc_packet = packet.decode_packet(response)
-
-        if inc_packet.command == 1:
-            # If the incoming packet is a response packet, send routing table to the requesting router.
-            entries = []
-
-            # Split horizon with poisoned reverse
-            for route in self.table.routes.values():
-                if route.next_hop == inc_packet.from_router_id:
-                    entries.append(RIPEntry(route.destination, 16))
-                else:
-                    entries.append(RIPEntry(route.destination, route.metric))
-
-            # Send routing table to adjacent router
-            response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
-            self.send_packet(response_packet, inc_packet.from_router_id)
 
         if inc_packet.command == 2:
             # If we recieve routing information from another router, update our database to include it. 
@@ -369,22 +332,17 @@ class Daemon():
                         self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
                         self.table.routes[entry.to_router_id].timeout_timer = time.time()
                         self.table.routes[entry.to_router_id].garbage_timer = 0.0
+
+                        self.handle_triggered_update()
                     
                     # Reset timeout if metric is the same
                     if potential_metric == self.table.routes[entry.to_router_id].metric:
                         self.table.routes[entry.to_router_id].timeout_timer = time.time()
                         self.table.routes[entry.to_router_id].garbage_timer = 0.0
-
                 else:
                     # Add new route to table 
                     if entry.metric + self.C[inc_packet.from_router_id] <= 16:
                         self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
-                
-
-    def handle_periodic_update(self):
-        self.flood_requests()
-        self.flood_timer.reset()
-        self.flood_interval = random.randint(RESPONSE_MESSAGE_INTERVAL - RESPONSE_MESSAGE_RANGE, RESPONSE_MESSAGE_INTERVAL + RESPONSE_MESSAGE_RANGE) / TIMER_DIVISOR
 
     def update_table(self):
         to_delete = []
@@ -411,6 +369,28 @@ class Daemon():
             del self.table.routes[destination]
 
 
+    def handle_triggered_update(self):
+        """
+        After a route has been updated, recompute table and flood adjacent routers with update.
+        """
+        self.update_table()
+        self.flood_table()
+
+    def handle_periodic_update(self):
+        """
+        Periodically flood all adjacent routers with routing table.
+        """ 
+        self.flood_table()
+        self.flood_timer.reset()
+        self.flood_interval = random.randint(RESPONSE_MESSAGE_INTERVAL - RESPONSE_MESSAGE_RANGE, RESPONSE_MESSAGE_INTERVAL + RESPONSE_MESSAGE_RANGE) / TIMER_DIVISOR
+
+    def handle_print_table(self):
+        """
+        Print the router table and reset the print table timer.
+        """ 
+        self.print_table() 
+        self.print_timer.reset()
+
     def start(self):
         """
         Router mainloop
@@ -426,14 +406,11 @@ class Daemon():
         self.state = State.LISTENING
         
         while self.state is State.LISTENING:
-            self.update_table()
-
             if self.flood_timer.get_uptime() > self.flood_interval:
                 self.handle_periodic_update()
             
             if self.print_timer.get_uptime() > 3:
-                self.print_table() 
-                self.print_timer.reset()
+                self.handle_print_table()
 
             # Handle received packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
