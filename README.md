@@ -36,9 +36,8 @@ After activating your enviroment the program can be run from the command line by
 ```
 
 ## Todo
-- [ ] Make sure all methods have docstring
+- [x] Make sure all methods have docstring
 - [ ] Fix Operation not permitted error with sock.send
 - [ ] Remove unnecessary prints and commenting
 - [ ] Reorder methods
-- [ ] Remove use of magic nos.
-- [ ] etc.
+- [x] Remove use of magic nos.
