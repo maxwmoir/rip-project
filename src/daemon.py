@@ -166,7 +166,6 @@ class Daemon():
         # Call startup methods
         self.read_config()
         self.bind_sockets()
-        self.table.add_route(self.id, self.id, 0)
 
     def read_config(self):
         """
@@ -319,6 +318,15 @@ class Daemon():
         inc_packet = packet.decode_packet(response)
 
         if inc_packet.command == packet.COMMAND_RESPONSE:
+
+            # Add route of adjacent router to the routing table
+            if inc_packet.from_router_id not in self.table.routes.keys():
+                self.table.add_route(inc_packet.from_router_id, inc_packet.from_router_id, self.C[inc_packet.from_router_id])
+            else:
+                # If route is already in routing table then reset its timer 
+                self.table.routes[inc_packet.from_router_id].timeout_timer = time.time()
+                self.table.routes[inc_packet.from_router_id].garbage_timer = 0.0
+
             # If we recieve routing information from another router, update our database to include it. 
             for entry in inc_packet.entries:
 
@@ -331,9 +339,9 @@ class Daemon():
                         self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
                         self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
 
+                        # Reset route timeout_timer after an update
                         self.table.routes[entry.to_router_id].timeout_timer = time.time()
                         self.table.routes[entry.to_router_id].garbage_timer = 0.0
-
                     
                     # Reset timeout if metric is the same
                     if potential_metric == self.table.routes[entry.to_router_id].metric:
@@ -343,7 +351,6 @@ class Daemon():
                     # Add new route to table 
                     if entry.metric + self.C[inc_packet.from_router_id] <= 16:
                         self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
-
 
     def update_table(self):
         """
