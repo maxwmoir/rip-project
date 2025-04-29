@@ -110,8 +110,8 @@ def test_final_graph():
     print("Table correct:", graph in correct_answers)
 
     for d in daemons:
-        d.state = "shut-down"
-    
+        d.shut_down()
+
     del threads
     del daemons
     return 

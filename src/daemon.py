@@ -154,11 +154,11 @@ class Daemon():
         self.running = True
 
         # Initialise Timers
-        self.flood_timer = Timer()
+        self.periodic_timer = Timer()
         self.print_timer = Timer()
 
         # Initialise Timeouts 
-        self.flood_interval = RESPONSE_MESSAGE_INTERVAL / TIMER_DIVISOR
+        self.periodic_update_interval = RESPONSE_MESSAGE_INTERVAL / TIMER_DIVISOR
         self.select_timeout = 0.1
         self.timeout_length = ROUTE_TIMEOUT / TIMER_DIVISOR
         self.garbage_length = GARBAGE_COLLECTION_TIME / TIMER_DIVISOR
@@ -288,7 +288,7 @@ class Daemon():
             if sock is not None:
                 sock.close()
     
-    def flood_table(self):
+    def update_neighbours(self):
         """
         Flood all adjacent routers with routing table
         """
@@ -334,7 +334,6 @@ class Daemon():
                         self.table.routes[entry.to_router_id].timeout_timer = time.time()
                         self.table.routes[entry.to_router_id].garbage_timer = 0.0
 
-                        self.handle_triggered_update()
                     
                     # Reset timeout if metric is the same
                     if potential_metric == self.table.routes[entry.to_router_id].metric:
@@ -363,33 +362,28 @@ class Daemon():
                 # Start garbage collection
                 if route.metric == 16 and not route.garbage_timer:
                     route.garbage_timer = time.time()
+
+                    # Send a triggered update 
+                    self.update_neighbours()
                     
                 # Garbage collection time exceeded, mark for deletion
                 if route.garbage_timer and cur_time - route.garbage_timer >= self.garbage_length:
                     to_delete.append(destination)
 
         # Now actually delete the routes
-
         for destination in to_delete:
             print(f"R{self.id} - Deleting route to R{destination} after garbage collection.")
             del self.table.routes[destination]
 
-    def handle_triggered_update(self):
-        """
-        After a route has been updated, recompute table and flood adjacent routers with update.
-        """
-
-        self.flood_table()
-        self.update_table()
 
     def handle_periodic_update(self):
         """
         Periodically flood all adjacent routers with routing table.
         """ 
         self.update_table()
-        self.flood_table()
-        self.flood_timer.reset()
-        self.flood_interval = random.randint(RESPONSE_MESSAGE_INTERVAL - RESPONSE_MESSAGE_RANGE, RESPONSE_MESSAGE_INTERVAL + RESPONSE_MESSAGE_RANGE) / TIMER_DIVISOR
+        self.update_neighbours()
+        self.periodic_timer.reset()
+        self.periodic_update_interval = random.randint(RESPONSE_MESSAGE_INTERVAL - RESPONSE_MESSAGE_RANGE, RESPONSE_MESSAGE_INTERVAL + RESPONSE_MESSAGE_RANGE) / TIMER_DIVISOR
 
     def handle_print_table(self):
         """
@@ -408,7 +402,7 @@ class Daemon():
         self.state = State.LISTENING
         
         while self.state is State.LISTENING:
-            if self.flood_timer.get_uptime() > self.flood_interval:
+            if self.periodic_timer.get_uptime() > self.periodic_update_interval:
                 self.handle_periodic_update()
             
             if self.print_timer.get_uptime() > 3:
@@ -434,6 +428,7 @@ class Daemon():
 
         if self.state is not State.SHUT_DOWN:
             self.state = State.SHUT_DOWN
+            time.sleep(0.1)
             for sock in self.socks:
                 if sock is not None:
                     sock.close()
