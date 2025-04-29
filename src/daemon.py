@@ -456,6 +456,16 @@ class Daemon():
                         print(e)
                         self.shut_down()
 
+    def disable(self):
+        """
+        Disable the daemon.
+        """
+
+        if self.state == State.LISTENING:
+            self.state = State.DISABLED
+            time.sleep(0.1)
+            self.table = RoutingTable()
+
     def shut_down(self):
         """
         Shut down the daemon.

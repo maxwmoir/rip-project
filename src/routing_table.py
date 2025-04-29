@@ -40,5 +40,5 @@ class RoutingTable():
         route = routing_entry.RoutingEntry(destination, next_hop, metric)
         route.timeout_timer = time.time()
 
-        if destination not in self.routes.keys():
+        if destination not in self.routes:
             self.routes[destination] = route
