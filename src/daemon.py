@@ -498,7 +498,7 @@ class Daemon():
         String representation of the Daemon object.
         """
 
-        return f"<Daemon ID: {self.id}>"
+        return f"Daemon Object: Daemon ID: {self.id}"
 
 
 # Handle daemon creation from the command line.

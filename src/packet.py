@@ -34,7 +34,7 @@ class RIPPacket():
         try:
             self.validate_initialisation(command, from_router_id, entries)
         except ValueError as e:
-            print(f"Failed to initialise packet")
+            print("Failed to initialise packet")
             print(e)
             raise e
 
@@ -43,6 +43,7 @@ class RIPPacket():
         self.version = VERSION
         self.from_router_id = from_router_id
         self.entries = entries if entries else []
+
 
     def validate_initialisation(self, command, from_router_id, entries):
         """
@@ -65,7 +66,7 @@ class RIPPacket():
             raise ValueError("Invalid command type. Must be 1 (request) or 2 (response).")
         if from_router_id < 0 or from_router_id > 65535:
             raise ValueError("Invalid router ID. Must be between 0 and 65535.")
-        
+
         if entries:
             for entry in entries:
                 if entry.to_router_id < 0 or entry.to_router_id > 65535:
@@ -74,7 +75,7 @@ class RIPPacket():
                     raise ValueError("Invalid AFI. Must be 2 (IPv4).")
                 if entry.metric < 1 or entry.metric > 16:
                     raise ValueError("Invalid metric. Must be between 0 and 16.")
-        
+
         return True
 
 
@@ -95,8 +96,14 @@ class RIPPacket():
         String representation of the packet object.
         """
 
-        entries = f"{''.join([f"[To-ID: {l.to_router_id}, Metric: {l.metric}, AFI: {l.afi}], " for l in self.entries])}"
-        return f"Packet-Object: Command Type: {self.command}, Version: {self.version}, From-ID: {self.from_router_id}, Entries: [{entries}]"
+        entries = f"{''.join([f"""[To-ID: {l.to_router_id},
+        Metric: {l.metric},
+        AFI: {l.afi}], """ for l in self.entries])}"
+        
+        return f"""Packet-Object: Command Type: {self.command},
+            Version: {self.version},
+            From-ID: {self.from_router_id},
+            Entries: [{entries}]"""
 
 
 def encode_packet(input_packet):
@@ -118,7 +125,7 @@ def encode_packet(input_packet):
     # Form Header
     packet[0] = input_packet.command
     packet[1] = input_packet.version
-    packet[2] = (input_packet.from_router_id >> 8) & 0xFF 
+    packet[2] = (input_packet.from_router_id >> 8) & 0xFF
     packet[3] = (input_packet.from_router_id >> 0) & 0xFF
 
     # Store encoded entries
@@ -159,11 +166,20 @@ def decode_packet(encoded_packet):
     entries = []
     for i in range(header_size, len(encoded_packet), payload_size):
         afi = encoded_packet[i] << 8 | encoded_packet[i + 1]
-        # must-be-zero segment
-        to_router_id = encoded_packet[i + 4] << 24 | encoded_packet[i + 5] << 16 | encoded_packet[i + 6] << 8 | encoded_packet[i + 7]
 
         # must-be-zero segment
-        metric = encoded_packet[i + 16] << 24 | encoded_packet[i + 17] << 16 | encoded_packet[i + 18] << 8 | encoded_packet[i + 19]
+
+        to_router_id = (encoded_packet[i + 4] << 24
+            | encoded_packet[i + 5] << 16
+            | encoded_packet[i + 6] << 8
+            | encoded_packet[i + 7])
+
+        # must-be-zero segment
+
+        metric = (encoded_packet[i + 16] << 24
+            | encoded_packet[i + 17] << 16
+            | encoded_packet[i + 18] << 8
+            | encoded_packet[i + 19])
 
         entry = RIPEntry(to_router_id, metric, afi)
         entries.append(entry)

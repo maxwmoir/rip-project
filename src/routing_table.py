@@ -10,8 +10,8 @@ Authors:
 - Max Moir
 """
 
-import routing_entry
 import time
+import routing_entry
 
 class RoutingTable():
     """
