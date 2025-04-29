@@ -27,13 +27,21 @@ def test_empty_packet_encoding():
     assert decoded.from_router_id == 123
     assert len(decoded.entries) == 0
 
-def test_invalid_command():
+def test_invalid_command_oob():
     """
     Test that an invalid command raises an error or behaves as expected.
     """
 
     with pytest.raises(ValueError):
-        RIPPacket(command=99, from_router_id=123)  # Assuming command 99 is invalid
+        RIPPacket(command=99, from_router_id=123)
+
+def test_invalid_command_negative():
+    """
+    Test that an invalid command raises an error or behaves as expected.
+    """
+
+    with pytest.raises(ValueError):
+        RIPPacket(command=-1, from_router_id=123)
 
 def test_large_router_id():
     """
@@ -55,7 +63,7 @@ def test_maximum_metric():
     """
 
     packet = RIPPacket(command=COMMAND_RESPONSE, from_router_id=1)
-    packet.add_entry(to_router_id=2, metric=16)  # RIP metric max is 16
+    packet.add_entry(to_router_id=2, metric=16)
     encoded = encode_packet(packet)
     decoded = decode_packet(encoded)
 
@@ -85,6 +93,10 @@ def test_multiple_packets():
     assert decoded2.from_router_id == 3
     assert decoded2.entries[0].to_router_id == 4
     assert decoded2.entries[0].metric == 10
+
+    # Incorrect packet should be caught
+    with pytest.raises(ValueError):
+        RIPPacket(command=COMMAND_RESPONSE, from_router_id=-1) 
 
 def test_multiple_entries():
     """
