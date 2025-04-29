@@ -34,7 +34,8 @@ class Timer():
         self.state = State.STOPPED
         self.start_time = 0.0
         self.creation_time = time.time()
-    
+
+
     def get_uptime(self):
         """
         Returns timer uptime.
@@ -42,8 +43,10 @@ class Timer():
         Returns:
             float: Time since last start.
         """
-        return time.time() - self.start_time 
-        
+
+        return time.time() - self.start_time
+
+
     def reset(self):
         """
         Resets the timer.
@@ -57,6 +60,7 @@ class Timer():
         """
         Starts the timer.
         """
+        
         if self.state is not State.RUNNING:
             self.state = State.RUNNING
-            self.time = time.time()
+            self.start_time = time.time()

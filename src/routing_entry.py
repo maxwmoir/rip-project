@@ -10,8 +10,6 @@ Authors:
 - Max Moir
 """
 
-import time
-
 class RoutingEntry():
     """
     Class for storing information about a routing connection.
@@ -32,12 +30,16 @@ class RoutingEntry():
         self.metric = metric
 
         # Timeout and garbage collection timers
-        self.timeout_timer = 0.0 
+        self.timeout_timer = 0.0
         self.garbage_timer = 0.0
 
     def __str__(self):
         """
         String representation of the routing entry.
         """
-        
-        return f"|           {self.destination}           {self.next_hop}        {self.metric:02} |" 
+
+        return f"""Routing Entry Object: Destination: {self.destination},
+            Next-Hop: {self.next_hop},
+            Metric: {self.metric},
+            Timeout-Timer: {self.timeout_timer},
+            Garbage-Timer: {self.garbage_timer}"""
