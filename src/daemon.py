@@ -460,6 +460,12 @@ class Daemon():
                 print(f"|           {i + 1}           -         - |")
         print("+-----------------------------------+")
 
+    def __del__(self):
+        """
+        Handle daemnon deletion
+        """
+        self.shut_down()
+
     def __str__(self):
         """
         String representation of the Daemon object.
