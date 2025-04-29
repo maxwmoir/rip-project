@@ -93,7 +93,7 @@ def verify_output_ports(input_ports, output_ports):
         valid = verify_port_number(port)
 
         # Check metric validity
-        if not 1 <= metric <= 500:
+        if not 1 <= metric <= 16:
             valid = False
 
         # Check if port is a duplicate

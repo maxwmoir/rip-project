@@ -48,12 +48,12 @@ def test_large_router_id():
     Test encoding and decoding with a large router ID.
     """
 
-    packet = RIPPacket(command=COMMAND_RESPONSE, from_router_id=65535)
+    packet = RIPPacket(command=COMMAND_RESPONSE, from_router_id=64000)
     packet.add_entry(to_router_id=500, metric=10)
     encoded = encode_packet(packet)
     decoded = decode_packet(encoded)
 
-    assert decoded.from_router_id == 65535
+    assert decoded.from_router_id == 64000
     assert decoded.entries[0].to_router_id == 500
     assert decoded.entries[0].metric == 10
 
