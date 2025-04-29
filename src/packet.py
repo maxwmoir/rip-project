@@ -31,8 +31,12 @@ class RIPPacket():
             from_router_id (int): The ID of the router this packet is being sent from
             entries (list::RIPEntry): The cost to reach the next router
         """
-
-        self.validate_initialisation(command, from_router_id, entries)
+        try:
+            self.validate_initialisation(command, from_router_id, entries)
+        except ValueError as e:
+            print(f"Failed to initialise packet")
+            print(e)
+            raise e
 
         # Initialise the packet object
         self.command = command
@@ -64,10 +68,12 @@ class RIPPacket():
         
         if entries:
             for entry in entries:
-                if (entry.to_router_id < 0 or entry.to_router_id > 65535):
+                if entry.to_router_id < 0 or entry.to_router_id > 65535:
                     raise ValueError("Invalid router ID. Must be between 0 and 65535.")
-                if (entry.afi != AFI):
+                if entry.afi != AFI:
                     raise ValueError("Invalid AFI. Must be 2 (IPv4).")
+                if entry.metric < 0 or entry.metric > 16:
+                    raise ValueError("Invalid metric. Must be between 0 and 16.")
         
         return True
 
