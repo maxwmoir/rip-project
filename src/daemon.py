@@ -459,7 +459,6 @@ class Daemon():
             else:
                 print(f"|           {i + 1}           -         - |")
         print("+-----------------------------------+")
-        print()
 
     def __str__(self):
         """
