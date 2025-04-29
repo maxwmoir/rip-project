@@ -25,6 +25,7 @@ class RoutingTable():
 
         self.routes = {}
 
+
     def add_route(self, destination, next_hop, metric):
         """
         Add a new route to the routing table.
