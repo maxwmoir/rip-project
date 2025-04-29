@@ -40,12 +40,14 @@ def print_system_graph(daemons):
     return graph
 
 
+
+
+
 def test_final_graph():
     '''
-    FINAL GRAPH
+    Test out the demonstration graph. 
     '''
-    print()
-    print("Starting test")
+
     daemons = [Daemon(f"./tests/cfgs/figure1/cfg{i + 1}.txt") for i in range(7)]
 
     for d in daemons:
@@ -69,7 +71,6 @@ def test_final_graph():
 
 
     time.sleep(1)
-    print()
     graph = print_system_graph(daemons)    
     print("Table correct:", graph in correct_answers)
     assert graph in correct_answers

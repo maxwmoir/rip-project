@@ -30,15 +30,12 @@ RESPONSE_MESSAGE_RANGE = 5
 ROUTE_TIMEOUT = 180
 GARBAGE_COLLECTION_TIME = 120
 NUMBER_OF_ROUTERS = 7
-TIMER_DIVISOR = 600
+TIMER_DIVISOR = 1000
 
 # Potential states for routing daemon
 class State():
     INIT = "INITIALISING"
     LISTENING = "LISTENING"
-    PROCESSING_MESSAGE = "PROCESSING_MESSAGE"
-    FLOODING = "FLOODING_NEIGHBOURS"
-    UPDATING = "UPDATING_TABLE"
     SHUT_DOWN = "SHUT_DOWN"
 
 
@@ -152,23 +149,22 @@ class Daemon():
         self.socks = []
         self.state = State.INIT
         self.table = RoutingTable()
-        self.history = [] # For testing
         self.C = {}
         self.running = True
 
-        # Initialise timers
+        # Initialise Timers
         self.flood_timer = Timer()
-        self.flood_interval = RESPONSE_MESSAGE_INTERVAL / TIMER_DIVISOR
+        self.print_timer = Timer()
 
-        # Timeouts 
+        # Initialise Timeouts 
+        self.flood_interval = RESPONSE_MESSAGE_INTERVAL / TIMER_DIVISOR
+        self.select_timeout = 0.1
         self.timeout_length = ROUTE_TIMEOUT / TIMER_DIVISOR
         self.garbage_length = GARBAGE_COLLECTION_TIME / TIMER_DIVISOR
-        self.select_timeout = None
 
-        # Call methods
+        # Call startup methods
         self.read_config()
         self.bind_sockets()
-        self.request_packet = RIPPacket(packet.COMMAND_REQUEST, self.id)
 
     def read_config(self):
         """
@@ -248,8 +244,6 @@ class Daemon():
                 print("ERROR: Socket binding failed")
                 print(e)
                 exit()
-
-
 
     def send_packet(self, pack, dest):
         """
@@ -338,6 +332,7 @@ class Daemon():
                     if potential_metric < self.table.routes[entry.to_router_id].metric:
                         self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
                         self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
+
                         self.table.routes[entry.to_router_id].timeout_timer = time.time()
                         self.table.routes[entry.to_router_id].garbage_timer = 0.0
 
@@ -352,11 +347,11 @@ class Daemon():
                     if entry.metric + self.C[inc_packet.from_router_id] <= 16:
                         self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
 
+
     def update_table(self):
         """
         Update the routing table by checking for timeouts and garbage collection.
         """
-
         to_delete = []
         for destination, route in self.table.routes.items():
 
@@ -376,31 +371,31 @@ class Daemon():
                     to_delete.append(destination)
 
         # Now actually delete the routes
+
         for destination in to_delete:
             print(f"R{self.id} - Deleting route to R{destination} after garbage collection.")
             del self.table.routes[destination]
-
 
     def handle_triggered_update(self):
         """
         After a route has been updated, recompute table and flood adjacent routers with update.
         """
 
-        self.update_table()
         self.flood_table()
+        self.update_table()
 
     def handle_periodic_update(self):
         """
         Periodically flood all adjacent routers with routing table.
         """ 
-
+        self.update_table()
         self.flood_table()
         self.flood_timer.reset()
         self.flood_interval = random.randint(RESPONSE_MESSAGE_INTERVAL - RESPONSE_MESSAGE_RANGE, RESPONSE_MESSAGE_INTERVAL + RESPONSE_MESSAGE_RANGE) / TIMER_DIVISOR
 
     def handle_print_table(self):
         """
-        Print the router table and reset the print table timer.
+        Print the routing table table and reset the print table timer.
         """ 
 
         self.print_table() 
@@ -411,11 +406,8 @@ class Daemon():
         Start the routing daemon and begin listening for incoming packets.
         """
 
-        # Don't want it to do this eventually:
         self.table.add_route(self.id, self.id, 0)
 
-        self.select_timeout = 0.1    
-        self.print_timer = Timer()
         self.print_timer.start()
 
         self.state = State.LISTENING
@@ -441,8 +433,6 @@ class Daemon():
                         for sock in self.socks:
                             if sock is not None:
                                 sock.close()
-
-
 
     def __str__(self):
         """
