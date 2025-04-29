@@ -23,17 +23,20 @@ from packet import RIPPacket, RIPEntry
 from routing_table import RoutingTable
 from timer import Timer
 
-# Constants 
+# Constants
 NETWORK_ADDRESS = 'localhost'
-RESPONSE_MESSAGE_INTERVAL = 30
-RESPONSE_MESSAGE_RANGE = 5
+UPDATE_INTERVAL = 30
+UPDATE_TIME_RANGE = 5
 ROUTE_TIMEOUT = 180
 GARBAGE_COLLECTION_TIME = 120
 NUMBER_OF_ROUTERS = 7
 TIMER_DIVISOR = 1000
 
-# Potential states for routing daemon
+
 class State():
+    """
+    Class to store the set of possible routing daemon states.
+    """
     INIT = "INITIALISING"
     LISTENING = "LISTENING"
     DISABLED  = "DISABLED"
@@ -88,7 +91,7 @@ def verify_output_ports(input_ports, output_ports):
 
     # Loop and "check off" seen ports whilst also verifying them
     for port_shell in output_ports:
-        port, metric, peer_id = port_shell
+        port, metric, _ = port_shell
 
         valid = verify_port_number(port)
 
@@ -128,12 +131,13 @@ def verify_port_number(port_number):
 
     return 1024 <= port_number <= 64000
 
+
 class Daemon():
     """
     Class implementing the router daemon.
     """
 
-    def __init__ (self, config, verbose = False):
+    def __init__ (self, config, print_verbose = False):
         """
         Initialize the Daemon.
 
@@ -145,21 +149,21 @@ class Daemon():
         # Initialise variables
         self.id = None
         self.config = config
-        self.verbose = verbose
+        self.verbose = print_verbose
         self.inputs = []
         self.outputs = []
         self.socks = []
         self.state = State.INIT
         self.table = RoutingTable()
-        self.C = {}
+        self.adjacent_metrics = {}
         self.running = True
 
         # Initialise Timers
         self.periodic_timer = Timer()
         self.print_timer = Timer()
 
-        # Initialise Timeouts 
-        self.periodic_update_interval = RESPONSE_MESSAGE_INTERVAL / TIMER_DIVISOR
+        # Initialise Timeouts
+        self.periodic_update_interval = UPDATE_INTERVAL / TIMER_DIVISOR
         self.select_timeout = 0.1
         self.timeout_length = ROUTE_TIMEOUT / TIMER_DIVISOR
         self.garbage_length = GARBAGE_COLLECTION_TIME / TIMER_DIVISOR
@@ -167,6 +171,7 @@ class Daemon():
         # Call startup methods
         self.read_config()
         self.bind_sockets()
+
 
     def read_config(self):
         """
@@ -206,7 +211,7 @@ class Daemon():
                             outs = [[int(v) for v in l.decode().split("-")] for l in line[1:]]
 
                             for out in outs:
-                                self.C[out[2]] = out[1]
+                                self.adjacent_metrics[out[2]] = out[1]
 
                             self.outputs = outs
                             contains_output_ports = True
@@ -261,7 +266,7 @@ class Daemon():
             return
 
         try:
-            address = NETWORK_ADDRESS 
+            address = NETWORK_ADDRESS
             port = output[0]
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -287,10 +292,11 @@ class Daemon():
             # or if an error occurred
             if sock is not None:
                 sock.close()
-    
+
+
     def update_neighbours(self):
         """
-        Flood all adjacent routers with routing table
+        Flood all adjacent routers with routing table.
         """
 
         for output in self.outputs:
@@ -323,62 +329,72 @@ class Daemon():
 
             # Add route of adjacent router to the routing table
             if inc_packet.from_router_id not in self.table.routes.keys():
-                self.table.add_route(inc_packet.from_router_id, inc_packet.from_router_id, self.C[inc_packet.from_router_id])
+                metric = self.adjacent_metrics[inc_packet.from_router_id]
+                self.table.add_route(inc_packet.from_router_id, inc_packet.from_router_id, metric)
             else:
-                # If route is already in routing table then reset its timer 
-                self.table.routes[inc_packet.from_router_id].metric = self.C[inc_packet.from_router_id]
+                # If route is already in routing table then update its metric
+                metric = self.adjacent_metrics[inc_packet.from_router_id]
+                self.table.routes[inc_packet.from_router_id].metric = metric
                 self.table.routes[inc_packet.from_router_id].next_hop = inc_packet.from_router_id
+
+                # In addition, reset its timers
                 self.table.routes[inc_packet.from_router_id].timeout_timer = time.time()
                 self.table.routes[inc_packet.from_router_id].garbage_timer = 0.0
 
-            # If we recieve routing information from another router, update our database to include it. 
+            # If we recieve routing information from another router, update database to include it.
             for entry in inc_packet.entries:
 
                 # Handle route already in table
                 if entry.to_router_id in self.table.routes.keys():
-                    potential_metric = entry.metric + self.C[inc_packet.from_router_id]  
-                    
+
+                    # Potential metric
+                    pot_metric = entry.metric + self.adjacent_metrics[inc_packet.from_router_id]
+
                     # Replace current route with better metric
-                    if potential_metric < self.table.routes[entry.to_router_id].metric:
-                        self.table.routes[entry.to_router_id].metric = entry.metric + self.C[inc_packet.from_router_id]
+                    if pot_metric < self.table.routes[entry.to_router_id].metric:
+                        metric = entry.metric + self.adjacent_metrics[inc_packet.from_router_id]
+                        self.table.routes[entry.to_router_id].metric = metric
                         self.table.routes[entry.to_router_id].next_hop = inc_packet.from_router_id
 
                         # Reset route timeout_timer after an update
                         self.table.routes[entry.to_router_id].timeout_timer = time.time()
                         self.table.routes[entry.to_router_id].garbage_timer = 0.0
-                    
+
                     # Reset timeout if metric is the same
-                    if potential_metric == self.table.routes[entry.to_router_id].metric:
+                    if pot_metric == self.table.routes[entry.to_router_id].metric:
                         self.table.routes[entry.to_router_id].timeout_timer = time.time()
                         self.table.routes[entry.to_router_id].garbage_timer = 0.0
                 else:
-                    # Add new route to table 
-                    if entry.metric + self.C[inc_packet.from_router_id] <= 16:
-                        self.table.add_route(entry.to_router_id, inc_packet.from_router_id, entry.metric + self.C[inc_packet.from_router_id])
+                    # Add new route to table
+                    if entry.metric + self.adjacent_metrics[inc_packet.from_router_id] <= 16:
+                        metric = entry.metric + self.adjacent_metrics[inc_packet.from_router_id]
+                        self.table.add_route(entry.to_router_id, inc_packet.from_router_id, metric)
 
     def update_table(self):
         """
         Update the routing table by checking for timeouts and garbage collection.
         """
+
         to_delete = []
         for destination, route in self.table.routes.items():
 
             if route.destination != self.id:
-                cur_time = time.time()
+                t_cur = time.time()
                 # Check if timeout has occurred and mark as unreachable
-                if cur_time - route.timeout_timer >= self.timeout_length and route.garbage_timer == 0.0:
+                if t_cur - route.timeout_timer >= self.timeout_length and not route.garbage_timer:
                     route.metric = 16
-                    # print(f"R{self.id} - Route to R{route.destination} timed out. Marking as unreachable.")
+                    if self.verbose:
+                        print(f"R{self.id} - Route to R{route.destination} timed out.")
 
                 # Start garbage collection
                 if route.metric == 16 and not route.garbage_timer:
                     route.garbage_timer = time.time()
 
-                    # Send a triggered update 
+                    # Send a triggered update
                     self.update_neighbours()
-                    
+
                 # Garbage collection time exceeded, mark for deletion
-                if route.garbage_timer and cur_time - route.garbage_timer >= self.garbage_length:
+                if route.garbage_timer and t_cur - route.garbage_timer >= self.garbage_length:
                     to_delete.append(destination)
 
         # Now actually delete the routes
@@ -390,20 +406,27 @@ class Daemon():
 
     def handle_periodic_update(self):
         """
-        Periodically flood all adjacent routers with routing table.
-        """ 
+        Periodically update all adjacent routers with routing table.
+        """
+
         self.update_table()
         self.update_neighbours()
         self.periodic_timer.reset()
-        self.periodic_update_interval = random.randint(RESPONSE_MESSAGE_INTERVAL - RESPONSE_MESSAGE_RANGE, RESPONSE_MESSAGE_INTERVAL + RESPONSE_MESSAGE_RANGE) / TIMER_DIVISOR
+
+        # Choose random interval to avoid router update collisions
+        lower_bound = UPDATE_INTERVAL - UPDATE_TIME_RANGE
+        upper_bound = UPDATE_INTERVAL + UPDATE_TIME_RANGE
+        self.periodic_update_interval = random.randint(lower_bound, upper_bound) / TIMER_DIVISOR
+
 
     def handle_print_table(self):
         """
         Print the routing table table and reset the print table timer.
-        """ 
+        """
 
         self.print_table()
         self.print_timer.reset()
+
 
     def start(self):
         """
@@ -412,17 +435,17 @@ class Daemon():
 
         self.print_timer.start()
         self.state = State.LISTENING
-        
+
         while self.state is State.LISTENING:
             if self.periodic_timer.get_uptime() > self.periodic_update_interval:
                 self.handle_periodic_update()
-            
+
             if self.print_timer.get_uptime() > 3:
                 self.handle_print_table()
 
             # Handle received packets
             readable_sockets, _, _ = select.select(self.socks, [], [], self.select_timeout)
-            
+
             for sock in readable_sockets:
                 if sock in self.socks:
                     try:
@@ -432,7 +455,7 @@ class Daemon():
                     except Exception as e:
                         print(e)
                         self.shut_down()
-                            
+
     def shut_down(self):
         """
         Shut down the daemon.
@@ -450,21 +473,25 @@ class Daemon():
         Print routing table to console.
         """
 
-        print(f"+------------ Router {self.id:02} ------------+")
-        print("| destination    next_hop    metric |")
+        print(f"+--------------------- Router {self.id:02} ----------------------+")
+        print( "| dest   next_hop     metric    timeout   garbage_time |")
 
         for i in range(NUMBER_OF_ROUTERS):
             if i + 1 in self.table.routes.keys():
-                print(self.table.routes[i + 1])
+                route = self.table.routes[i + 1]
+                print(f"|{route.destination:5} {route.next_hop:10} {route.metric:10} {(time.time() - route.timeout_timer):10.3g} {route.garbage_timer:14.3g} |")
             else:
-                print(f"|           {i + 1}           -         - |")
-        print("+-----------------------------------+")
+                print(f"|    {i + 1}          -          -          -              - |")
+        print("+------------------------------------------------------+")
+
 
     def __del__(self):
         """
-        Handle daemnon deletion
+        Handle daemnon deletion.
         """
+
         self.shut_down()
+
 
     def __str__(self):
         """
@@ -473,8 +500,10 @@ class Daemon():
 
         return f"<Daemon ID: {self.id}>"
 
-# Run the program
+
+# Handle daemon creation from the command line.
 if __name__ == "__main__":
+
     config_name = sys.argv[1]
 
     verbose = False
@@ -483,4 +512,7 @@ if __name__ == "__main__":
 
     daemon = Daemon(config_name, verbose)
 
-    daemon.start()
+    try:
+        daemon.start()
+    finally:
+        daemon.shut_down()
