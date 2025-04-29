@@ -21,7 +21,7 @@ def print_system_graph(daemons):
     Helper function to graph the routing tables of each router, print it out, and return it.
     """
 
-    graph = [[(-1, -1) for x in range(7)] for x in range(7)]
+    graph = [[(-1, -1) for x in range(len(daemons))] for x in range(len(daemons))]
     for i, d in enumerate(daemons):
         for route in d.table.routes.values():
             graph[i][route.destination - 1] = (route.next_hop, route.metric)
@@ -31,7 +31,7 @@ def print_system_graph(daemons):
         table_str[0] += f"    Router {i + 1}      "
         table_str[1] += f"dest next metric  "
 
-        for d in range(7):
+        for d in range(len(daemons)):
             if graph[i][d][0] == -1:
                 table_str[2 + d] += f" {d + 1:2d}    -    -     "
             else:
@@ -46,9 +46,9 @@ def test_router_failure():
     Test router convergence and failure with an example graph.
     """
 
-    # Correct convergence and failure graphs
-    correct   = [[(1, 1), (2, 1), (2, 3), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(-1, -1), (2, 1), (2, 3), (-1, -1), (-1, -1), (-1, -1), (0, 1)], [(1, 1), (-1, -1), (3, 2), (-1, -1), (-1, -1), (-1, -1), (0, 1)], [(2, 3), (2, 2), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (2, 3)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)]]
-    correct_f =  [[(1, 1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (0, 1)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1), (-1, -1)]]
+    # Correct convergence and failure graphs (Assuming renaming of routers)
+    correct   = [[(1, 1), (2, 1), (2, 3), (-1, -1)], [(-1, -1), (2, 1), (2, 3), (0, 1)], [(1, 1), (-1, -1), (3, 2), (0, 1)], [(2, 3), (2, 2), (-1, -1), (2, 3)]] 
+    correct_f = [[(1, 1), (-1, -1), (-1, -1), (-1, -1)], [(-1, -1), (-1, -1), (-1, -1), (0, 1)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1)], [(-1, -1), (-1, -1), (-1, -1), (-1, -1)]] 
 
     # Set up network
     daemons = [Daemon(f"./tests/cfgs/graph1/cfg{i}.txt") for i in range(4)]
