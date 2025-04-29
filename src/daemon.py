@@ -133,7 +133,7 @@ class Daemon():
     Class implementing the router daemon.
     """
 
-    def __init__ (self, config):
+    def __init__ (self, config, verbose = False):
         """
         Initialize the Daemon.
 
@@ -145,6 +145,7 @@ class Daemon():
         # Initialise variables
         self.id = None
         self.config = config
+        self.verbose = verbose
         self.inputs = []
         self.outputs = []
         self.socks = []
@@ -297,10 +298,11 @@ class Daemon():
 
             # Split horizon with poisoned reverse
             for route in self.table.routes.values():
-                if route.next_hop == output[2]:
-                    entries.append(RIPEntry(route.destination, 16))
-                else:
-                    entries.append(RIPEntry(route.destination, route.metric))
+                if route.destination is not output[2]:
+                    if route.next_hop == output[2]:
+                        entries.append(RIPEntry(route.destination, 16))
+                    else:
+                        entries.append(RIPEntry(route.destination, route.metric))
 
             # Send routing table to adjacent router
             response_packet = RIPPacket(packet.COMMAND_RESPONSE, self.id, entries)
@@ -324,6 +326,8 @@ class Daemon():
                 self.table.add_route(inc_packet.from_router_id, inc_packet.from_router_id, self.C[inc_packet.from_router_id])
             else:
                 # If route is already in routing table then reset its timer 
+                self.table.routes[inc_packet.from_router_id].metric = self.C[inc_packet.from_router_id]
+                self.table.routes[inc_packet.from_router_id].next_hop = inc_packet.from_router_id
                 self.table.routes[inc_packet.from_router_id].timeout_timer = time.time()
                 self.table.routes[inc_packet.from_router_id].garbage_timer = 0.0
 
@@ -379,7 +383,8 @@ class Daemon():
 
         # Now actually delete the routes
         for destination in to_delete:
-            print(f"R{self.id} - Deleting route to R{destination} after garbage collection.")
+            if self.verbose:
+                print(f"R{self.id} - Deleting route to R{destination} after garbage collection.")
             del self.table.routes[destination]
 
 
@@ -466,6 +471,11 @@ class Daemon():
 # Run the program
 if __name__ == "__main__":
     config_name = sys.argv[1]
-    daemon = Daemon(config_name)
+
+    verbose = False
+    if len(sys.argv) > 2 and sys.argv[2] == "-v":
+        verbose = True
+
+    daemon = Daemon(config_name, verbose)
 
     daemon.start()

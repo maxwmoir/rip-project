@@ -10,6 +10,8 @@ Authors:
 - Max Moir
 """
 
+import time
+
 class RoutingEntry():
     """
     Class for storing information about a routing connection.
@@ -30,7 +32,6 @@ class RoutingEntry():
         self.metric = metric
 
         # Timeout and garbage collection timers
-        self.age = 0.0
         self.timeout_timer = 0.0 
         self.garbage_timer = 0.0
 
@@ -39,4 +40,4 @@ class RoutingEntry():
         String representation of the routing entry.
         """
         
-        return f"|           {self.destination}           {self.next_hop}        {self.metric:02} |"
+        return f"|           {self.destination}           {self.next_hop}        {self.metric:02} |" 

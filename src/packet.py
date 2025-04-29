@@ -72,7 +72,7 @@ class RIPPacket():
                     raise ValueError("Invalid router ID. Must be between 0 and 65535.")
                 if entry.afi != AFI:
                     raise ValueError("Invalid AFI. Must be 2 (IPv4).")
-                if entry.metric < 0 or entry.metric > 16:
+                if entry.metric < 1 or entry.metric > 16:
                     raise ValueError("Invalid metric. Must be between 0 and 16.")
         
         return True
