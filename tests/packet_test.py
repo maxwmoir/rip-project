@@ -104,13 +104,13 @@ def test_multiple_entries():
     """
 
     packet = RIPPacket(command=2, from_router_id=500)
-    packet.add_entry(to_router_id=600, metric=20)
-    packet.add_entry(to_router_id=700, metric=25)
+    packet.add_entry(to_router_id=600, metric=1)
+    packet.add_entry(to_router_id=700, metric=5)
     encoded = encode_packet(packet)
     decoded = decode_packet(encoded)
 
     assert len(decoded.entries) == 2
     assert decoded.entries[0].to_router_id == 600
-    assert decoded.entries[0].metric == 20
+    assert decoded.entries[0].metric == 1
     assert decoded.entries[1].to_router_id == 700
-    assert decoded.entries[1].metric == 25
+    assert decoded.entries[1].metric == 5
