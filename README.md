@@ -10,12 +10,12 @@ It implements the basic RIP routing protocol with Split Horizon and Poison Rever
 ## Configuration
 The program is designed to converge upon an ideal network state from a given set of router config files. Config files bust be written in the following format:
 ```text
-    router-id 1
-    input-ports 6110, 6301, 7345
-    outputs 5000-1-1, 5002-5-4
+    router-id [id]
+    input-ports [port-number], [port-number], …
+    output-ports [port-number]-[metric-value]-[peer-router-id], …
 ```
 
-Example config files are located in `src/cfgs`
+Example config files are located in `src/cfgs`.
 
 ## How to run
 First, clone the project using the following command:
