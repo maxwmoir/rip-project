@@ -36,6 +36,7 @@ TIMER_DIVISOR = 1000
 class State():
     INIT = "INITIALISING"
     LISTENING = "LISTENING"
+    DISABLED  = "DISABLED"
     SHUT_DOWN = "SHUT_DOWN"
 
 
@@ -165,6 +166,7 @@ class Daemon():
         # Call startup methods
         self.read_config()
         self.bind_sockets()
+        self.table.add_route(self.id, self.id, 0)
 
     def read_config(self):
         """
@@ -227,9 +229,7 @@ class Daemon():
             try:
                 self.socks.append(socket.socket(socket.AF_INET, socket.SOCK_DGRAM))
             except Exception as e:
-                for sock in self.socks:
-                    if sock is not None:
-                        sock.close()
+                self.shut_down()
                 print("ERROR: Socket creation failed")
                 print(e)
                 exit()
@@ -238,9 +238,7 @@ class Daemon():
             try:
                 self.socks[i].bind((NETWORK_ADDRESS, port))
             except Exception as e:
-                for sock in self.socks:
-                    if sock is not None:
-                        sock.close()
+                self.shut_down()
                 print("ERROR: Socket binding failed")
                 print(e)
                 exit()
@@ -398,7 +396,7 @@ class Daemon():
         Print the routing table table and reset the print table timer.
         """ 
 
-        self.print_table() 
+        self.print_table()
         self.print_timer.reset()
 
     def start(self):
@@ -406,10 +404,7 @@ class Daemon():
         Start the routing daemon and begin listening for incoming packets.
         """
 
-        self.table.add_route(self.id, self.id, 0)
-
         self.print_timer.start()
-
         self.state = State.LISTENING
         
         while self.state is State.LISTENING:
@@ -430,16 +425,18 @@ class Daemon():
 
                     except Exception as e:
                         print(e)
-                        for sock in self.socks:
-                            if sock is not None:
-                                sock.close()
-
-    def __str__(self):
+                        self.shut_down()
+                            
+    def shut_down(self):
         """
-        String representation of the Daemon object.
+        Shut down the daemon.
         """
 
-        return f"ID: {self.id}"
+        if self.state is not State.SHUT_DOWN:
+            self.state = State.SHUT_DOWN
+            for sock in self.socks:
+                if sock is not None:
+                    sock.close()
 
     def print_table(self):
         """
@@ -454,20 +451,15 @@ class Daemon():
                 print(self.table.routes[i + 1])
             else:
                 print(f"|           {i + 1}           -         - |")
-
         print("+-----------------------------------+")
         print()
 
-    def print_info(self):
+    def __str__(self):
         """
-        Print information about the daemon to the console.
+        String representation of the Daemon object.
         """
 
-        print("ID: ", self.id)
-        print("conf: ", self.config)
-        print("inputs: ", self.inputs)
-        print("outputs: ", self.outputs)
-
+        return f"<Daemon ID: {self.id}>"
 
 # Run the program
 if __name__ == "__main__":
