@@ -14,16 +14,16 @@ import time
 
 class State():
     """
-    Class to represent the state of the timer.
+    Class to represent the possible states of the timer.
     """
 
     RUNNING = "RUNNING"
-    PAUSED  = "PAUSED"
+    STOPPED = "STOPPED"
 
 
 class Timer():
     """
-    Class to represent a Timer.
+    Class to represent a stopwatch style Timer.
     """
 
     def __init__(self):
@@ -31,13 +31,9 @@ class Timer():
         Initialize the Timer.
         """
 
-        self.state = State.PAUSED
+        self.state = State.STOPPED
         self.start_time = 0.0
         self.creation_time = time.time()
-
-        # Optional callback function called each period 
-        self.callback = None
-        self.period = None
     
     def get_uptime(self):
         """
@@ -46,7 +42,6 @@ class Timer():
         Returns:
             float: Time since last start.
         """
-
         return time.time() - self.start_time 
         
     def reset(self):
@@ -62,6 +57,6 @@ class Timer():
         """
         Starts the timer.
         """
-
-        self.state = State.RUNNING
-        self.time = time.time()
+        if self.state is not State.RUNNING:
+            self.state = State.RUNNING
+            self.time = time.time()
